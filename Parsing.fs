@@ -14,14 +14,14 @@ module Parsing =
     module General = 
        
         /// Builds a string for PicoHarp to write into.
-        let stringBuilder = function
+        let internal stringBuilder = function
             | String_8 -> StringBuilder (8)
             | String_16 -> StringBuilder (16)
             | String_40 -> StringBuilder (40)
             | String_16384 -> StringBuilder (16384)
         
         /// Converts all times into seconds. 
-        let timeConvert = function 
+        let internal timeConvert = function 
             | Time_pico time -> (1E-12)*time
             | Time_nano time ->  (1E-9)*time
             | Time_micro time -> (1E-6)*time
@@ -29,7 +29,7 @@ module Parsing =
             | Time_second time -> time
 
         /// Converts all voltages into millivolts.
-        let voltsConvert = function
+        let internal voltsConvert = function
             | Volts_mV voltage -> voltage
             | Volts_V voltage -> voltage*1000.0                                                                                                                                 
     
@@ -37,25 +37,25 @@ module Parsing =
     module Initialise = 
        
         /// Converts type Mode into integers. 
-        let modeNumber = function
+        let internal modeNumber = function
             | Histogramming -> 0
             | T2 -> 2
             | T3 -> 3
 
         /// Converts mode integer back into type Mode.
-        let parseMode = function
+        let internal parseMode = function
             | 0 -> Histogramming
             | 2 -> T2
             | 3 -> T3
             | _ -> failwithf "Invalid mode command"
 
         /// Converts type InputChannel into corresponding integers.
-        let channelNumber = function
+        let internal channelNumber = function
             | Channel_0 -> 0
             | Channel_1 -> 1
 
         /// Converts channel number back into type InputChannel. 
-        let parseChannel = function
+        let internal parseChannel = function
             | 0 -> Channel_0
             | 1 -> Channel_1
             | _ -> failwithf "Invaild channel"

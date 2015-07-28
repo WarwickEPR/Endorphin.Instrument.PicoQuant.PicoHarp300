@@ -71,7 +71,7 @@ module CallFunctions =
     let library = Native.PH_GetLibraryVersion (libraryVersion)
        
     /// Creates an initilised array for storing histogram data.
-    let histogramData : int array = Array.zeroCreate 65536 
+    let histogramData : int array = Array.create 65536 1 
     /// Creates a pinned array for PicoHarp to write into.
     let pinnedHistogram =  PinnedArray.of_array histogramData
 

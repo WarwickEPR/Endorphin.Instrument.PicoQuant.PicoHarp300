@@ -20,7 +20,7 @@ module Native =
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetErrorString")>]
     /// Returns the error code corresponding to the error number.
-    extern void PH_GetErrorString (StringBuilder errstring, int errcode);
+    extern int PH_GetErrorString (StringBuilder errstring, int errcode);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_OpenDevice")>]
     /// Opens device and returns the serial number.
@@ -61,6 +61,10 @@ module Native =
     
     extern int PH_SetOffset (int devidx, int offset);
 
+    [<DllImport("PHLib.Dll", EntryPoint = "PH_SetSyncOffset")>]
+    /// Sets offest of channel 0.
+    extern int PH_SetSyncOffset (int devidx, int offset);
+
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetResolution")>]
     /// Returns the bin width of the histogram.
     extern int PH_GetResolution (int devidx, [<Out>] double& resolution);  
@@ -84,6 +88,10 @@ module Native =
     [<DllImport("PHLib.Dll", EntryPoint = "PH_StopMeas")>]
     /// Stops measurments. 
     extern int PH_StopMeas (int devidx);
+    
+    [<DllImport("PHLib.Dll", EntryPoint = "PH_GetElapsedMeasTime")>]
+    /// Closes the PicoHarp. 
+    extern int PH_GetElapsedMeasTime (int devidx, [<Out>] double& elasped);
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_CTCStatus")>]
 
