@@ -36,6 +36,9 @@
     <Reference Include="ExtCore">
       <HintPath>..\Endorphin.Core\bin\Debug\ExtCore.dll</HintPath>
     </Reference>
+    <Reference Include="FSharp.PowerPack">
+      <HintPath>fsharp.powerpack.dll</HintPath>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
@@ -58,6 +61,7 @@
     <Compile Include="CFD.fs" />
     <Compile Include="Histogram.fs" />
     <None Include="OpenDevice.fsx" />
+    <None Include="PinnedArray.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">

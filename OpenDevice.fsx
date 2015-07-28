@@ -3,6 +3,7 @@
 #r @"..\Endorphin.Core\bin\Debug\Endorphin.Core.dll"
 #r "NationalInstruments.Common.dll"
 #r "NationalInstruments.VisaNS.dll"
+#r "FSharp.PowerPack.dll"
 
 open Microsoft.FSharp.NativeInterop
 open System.Runtime.InteropServices
@@ -39,6 +40,14 @@ module Native =
     /// Sets the mode of the PicoHarp, modes 0 , 2 or 3.
     extern void PH_Initialize (int devidx, int mode);
 
+    [<DllImport("PHLib.Dll", EntryPoint = "PH_GetHistogram")>]
+    /// Writes histogram data to an empty array chcount. 
+    extern int PH_GetHistogram (int devidx, int* chcount, int clear);
+
+    [<DllImport("PHLib.Dll", EntryPoint = "PH_ClearHistMem")>]
+    /// Clear all stored histograms from memrory.
+    extern int PH_ClearHistMem (int devidx, int block);
+
 module CallFunctions = 
 
     /// Builds two strings to write the serial number and library version into. 
@@ -60,8 +69,23 @@ module CallFunctions =
    
    /// Returns the library version of PHLib.Dll.
     let library = Native.PH_GetLibraryVersion (libraryVersion)
+       
+    /// Creates an initilised array for storing histogram data.
+    let histogramData : int array = Array.zeroCreate 65536 
+    /// Creates a pinned array for PicoHarp to write into.
+    let pinnedHistogram =  PinnedArray.of_array histogramData
+
+    /// Writes histogram data in the pinned array.
+    /// The argument block will always be zero unless routing is used. 
+    let getHistogram deviceIndex block = asyncChoice{
+        let success = Native.PH_GetHistogram (deviceIndex, pinnedHistogram.Ptr, block)
+        return pinnedHistogram}
 
     let closeDevice deviceIndex = Native.PH_CloseDevice (deviceIndex)
+
+    let memClear deviceIndex block = asyncChoice{
+        let success = Native.PH_ClearHistMem (deviceIndex , block)
+        return success}
 
 ///let deviceIndex = 0, always true if the PicoHarp is used in isolation. 
 let libraryVersion = StringBuilder(8)
@@ -74,6 +98,8 @@ printfn "%s" (opendevice.ToString())
 Native.PH_Initialize(0, 0)
 CallFunctions.setResolution 1
 CallFunctions.getBaseResolution 0 |> Async.RunSynchronously
+CallFunctions.memClear 0 0 |> Async.RunSynchronously
+CallFunctions.getHistogram 0 0 |> Async.RunSynchronously
 Native.PH_CloseDevice(0)
 
 

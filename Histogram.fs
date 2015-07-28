@@ -10,6 +10,7 @@ open Endorphin.Core.StringUtils
 open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300.Native
 
+
 module Histogram = 
     
     /// Sets the overflow limit on or off for the histogram bins.
@@ -41,3 +42,23 @@ module Histogram =
     let endMeasurments deviceIndex = asyncChoice{
         let success = PH_StopMeas (deviceIndex)
         return sprintf "Stop measurments: %i" success}
+
+    /// Creates an initilised array for storing histogram data.
+    let histogramData : int array = Array.zeroCreate 65536 
+    /// Creates a pinned array for PicoHarp to write into.
+    let pinnedHistogram =  PinnedArray.of_array histogramData
+
+    /// Writes histogram data in the pinned array.
+    /// The argument block will always be zero unless routing is used. 
+    let getHistogram deviceIndex block = asyncChoice{
+        let success = PH_GetHistogram (deviceIndex, pinnedHistogram.Ptr, block)
+        return pinnedHistogram}
+
+    ///Clears the histogram from picoHarps memrory
+    /// The argument block will always be zero unless routing is used. 
+    let clearHistogramMemrory deviceIndex block = asyncChoice{
+        let success = PH_ClearHistMem (deviceIndex, block)
+        return success}
+
+    let countRate (pinnedArray: int []) =  Array.sum pinnedArray
+        
