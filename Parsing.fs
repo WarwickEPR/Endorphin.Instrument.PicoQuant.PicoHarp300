@@ -69,7 +69,7 @@ module Parsing =
             else 1
         
         /// Takes DiscriminatorLevel from type CFD and converts into a voltage in units volts.
-        let internal discrminatorLevel level = General.voltsConvert (level.DiscriminatorLevel) 
+        let internal discriminatorLevel level = General.voltsConvert (level.DiscriminatorLevel) 
         
         /// Takes ZeroCross from type CFD and converts into a voltage in units volts.
         let internal zeroCross zero = General.voltsConvert (zero.ZeroCross)

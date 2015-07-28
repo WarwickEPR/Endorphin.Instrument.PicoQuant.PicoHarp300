@@ -43,7 +43,7 @@ module Model =
         ///Two possible input channels on PicoHarp.       
         type InputChannel = 
             | Channel_0
-            | Channel_1   
+            | Channel_1  
 
         ///Both input channels contain a CFD, discriminator level and zero cross should be in millivolts, will have a unit converotr function.
         type CFD = {
