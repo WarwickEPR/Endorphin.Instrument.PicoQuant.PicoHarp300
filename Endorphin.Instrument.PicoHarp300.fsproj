@@ -61,7 +61,7 @@
     <Compile Include="CFD.fs" />
     <Compile Include="Histogram.fs" />
     <None Include="OpenDevice.fsx" />
-    <None Include="PinnedArray.fsx" />
+    <None Include="NumberofCounts.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">

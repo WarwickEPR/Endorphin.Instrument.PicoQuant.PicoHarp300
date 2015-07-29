@@ -43,6 +43,12 @@ module Histogram =
         let success = PH_StopMeas (deviceIndex)
         return sprintf "Stop measurments: %i" success}
 
+    /// Returns time period over which experiment was running. 
+    let getMeasurmentTime deviceIndex = asyncChoice{
+        let mutable elasped : double = Unchecked.defaultof<_>
+        let time =  PH_GetElapsedMeasTime (deviceIndex, &elasped) 
+        return time}
+        
     /// Creates an initilised array for storing histogram data.
     let histogramData : int array = Array.zeroCreate 65536 
     /// Creates a pinned array for PicoHarp to write into.
@@ -60,5 +66,5 @@ module Histogram =
         let success = PH_ClearHistMem (deviceIndex, block)
         return success}
 
-    let countRate (pinnedArray: int []) =  Array.sum pinnedArray
-        
+    /// Calculates the total counts measured by summing the histogram channels.
+    let countTotal (pinnedArray: int []) =  Array.sum pinnedArray
