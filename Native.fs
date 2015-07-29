@@ -94,12 +94,12 @@ module Native =
     extern int PH_GetElapsedMeasTime (int devidx, [<Out>] double& elasped);
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_CTCStatus")>]
-
-    extern int PH_CTCStatus (int devidx, int* ctcstatus);
+    /// Checks if measurments have been taken or are still being taken.
+    extern int PH_CTCStatus (int devidx, [<Out>] int& ctcstatus);
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetHistogram")>]
     /// Writes histogram data to an empty array chcount. 
-    extern int PH_GetHistogram (int devidx, int* chcount, int clear);
+    extern int PH_GetHistogram (int devidx, int [] chcount, int clear);
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetFlags")>]
     extern int PH_GetFlags (int devidx, int* flags); 

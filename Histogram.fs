@@ -48,17 +48,20 @@ module Histogram =
         let mutable elasped : double = Unchecked.defaultof<_>
         let time =  PH_GetElapsedMeasTime (deviceIndex, &elasped) 
         return time}
-        
-    /// Creates an initilised array for storing histogram data.
-    let histogramData : int array = Array.zeroCreate 65536 
-    /// Creates a pinned array for PicoHarp to write into.
-    let pinnedHistogram =  PinnedArray.of_array histogramData
+       
+    /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
+    let getCTCStatus deviceIndex = asyncChoice{
+        let mutable ctcStatus : int = Unchecked.defaultof<_>
+        let success = PH_CTCStatus (deviceIndex, &ctcStatus)
+        return success}
 
-    /// Writes histogram data in the pinned array.
+    let histogramData = Array.create 65536 14
+
+    /// Writes histogram data into the array histogramData.
     /// The argument block will always be zero unless routing is used. 
     let getHistogram deviceIndex block = asyncChoice{
-        let success = PH_GetHistogram (deviceIndex, pinnedHistogram.Ptr, block)
-        return pinnedHistogram}
+        let success = PH_GetHistogram (deviceIndex, histogramData, block)
+        return histogramData}
 
     ///Clears the histogram from picoHarps memrory
     /// The argument block will always be zero unless routing is used. 
