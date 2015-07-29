@@ -14,6 +14,16 @@ module Model =
     type OnorOff = On | Off
     type Switch = On of int |Off
 
+    /// Type containing all PicoHarp's propeties.
+    type DevicePropeties = {
+        DeviceIndex : int
+        SerialNumber : StringBuilder
+        Model : string
+        PartNumber : string
+        Version : string
+        BaseResolution : string    
+        Features : int}
+
     ///Possible units of time. 
     type Time = 
         | Time_pico of float
@@ -26,16 +36,6 @@ module Model =
     type Volts = 
         | Volts_mV of float
         | Volts_V of float
-    
-    /// Type containing all PicoHarp's propeties.
-    type internal DevicePropeties = {
-        DeviceIndex : int
-        SerialNumber : string
-        Model : string
-        PartNumber : string
-        Version : string
-        BaseResolution : string    
-        Features : int}
 
     [<AutoOpen>]
     module SetupInputChannel = 

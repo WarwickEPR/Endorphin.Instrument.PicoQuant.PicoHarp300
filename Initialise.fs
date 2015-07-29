@@ -33,4 +33,4 @@ module Initialise =
     /// Closes the PicoHarp.
     let closeDevice deviceIndex = asyncChoice{
         let success = PH_CloseDevice (deviceIndex)
-        return sprintf "Close device: %i"success}
+        return success}

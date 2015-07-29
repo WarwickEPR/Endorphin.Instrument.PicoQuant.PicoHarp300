@@ -62,6 +62,7 @@
     <Compile Include="Histogram.fs" />
     <None Include="OpenDevice.fsx" />
     <None Include="NumberofCounts.fsx" />
+    <None Include="SingleMeasurment.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">

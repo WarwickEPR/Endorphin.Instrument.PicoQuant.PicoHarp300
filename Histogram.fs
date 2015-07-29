@@ -55,11 +55,9 @@ module Histogram =
         let success = PH_CTCStatus (deviceIndex, &ctcStatus)
         return success}
 
-    let histogramData = Array.create 65536 14
-
     /// Writes histogram data into the array histogramData.
     /// The argument block will always be zero unless routing is used. 
-    let getHistogram deviceIndex block = asyncChoice{
+    let getHistogram (deviceIndex:int) (histogramData:int[]) (block:int)  = asyncChoice{
         let success = PH_GetHistogram (deviceIndex, histogramData, block)
         return histogramData}
 
