@@ -63,7 +63,6 @@
     <None Include="OpenDevice.fsx" />
     <None Include="NumberofCounts.fsx" />
     <None Include="SingleMeasurement.fsx" />
-    <None Include="Test.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">

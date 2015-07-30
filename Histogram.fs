@@ -13,59 +13,77 @@ open Endorphin.Instrument.PicoHarp300.Native
 
 module Histogram = 
     
-    /// Sets the overflow limit on or off for the histogram bins.
-    let stopOverflow deviceIndex switch = asyncChoice{ 
-        /// Sets cap on number of counts per bin, minimum cap is 1 and maximum is 65535. 
-        let overflow switch =     
-            match switch.Overflow with
-            /// If overflow is turned on then check if limit is inside allowed range and then write to PicoHarp.
-            | On limit -> if (limit < 65535 && limit > 0) then 
-                              let stopcount = limit
-                              SetStopOverflow (deviceIndex, 0, limit)
-                          else failwithf "Invalid count limit, must be between 1 and 65535"
-            /// If overflow is switched off then set limit to the maximum and turn off.
-            | Off -> SetStopOverflow (deviceIndex, 1, 65535)
-        return overflow
-        }
+    module   = 
+     
+        /// Sets the overflow limit on or off for the histogram bins.
+        let private stopOverflow deviceIndex (histogram : Histogram) = asyncChoice{ 
+            /// Sets cap on number of counts per bin, minimum cap is 1 and maximum is 65535. 
+            let overflow switch =     
+                match histogram.Overflow with
+                /// If overflow is turned on then check if limit is inside allowed range and then write to PicoHarp.
+                | On limit -> if (limit < 65535 && limit > 0) then 
+                                  SetStopOverflow (deviceIndex, 0, limit)
+                              else failwithf "Invalid count limit, must be between 1 and 65535"
+                /// If overflow is switched off then set limit to the maximum and turn off.
+                | Off -> SetStopOverflow (deviceIndex, 1, 65535)
+            return overflow
+            }
 
-    /// Sets the bin resolution for the histogram.
-    let setBinning deviceIndex (resolution:Histogram) = asyncChoice{
-        let success = SetBinning (deviceIndex, (binningNumber resolution))
-        return sprintf "Set binning: %i" success}
+        /// Sets the bin resolution for the histogram.
+        let private setBinning deviceIndex (histogram : Histogram) = asyncChoice{
+            let success = SetBinning (deviceIndex, (binningNumber histogram))
+            return success}
 
-    /// Starts histogram mode measurments, requires an acquisition time aka the period of time to take measurments over.
-    let startMeasurments deviceIndex (time:Histogram) = asyncChoice{
-        let success = StartMeasurment (deviceIndex , int (acquisitionTime time) ) 
-        return sprintf "Start measurments: %i" success}
-    
-    /// Stops histogram mode measurments. 
-    let endMeasurments deviceIndex = asyncChoice{
-        let success = StopMeasurment (deviceIndex)
-        return sprintf "Stop measurments: %i" success}
+        /// Starts histogram mode measurments, requires an acquisition time aka the period of time to take measurments over.
+        let private startMeasurments deviceIndex (histogram : Histogram) = asyncChoice{
+            let success = StartMeasurment (deviceIndex , int (acquisitionTime histogram) ) 
+            return success}
+        
+        /// Stops histogram mode measurments. 
+        let private endMeasurments deviceIndex = asyncChoice{
+            let success = StopMeasurment (deviceIndex)
+            return success}
+        
+        /// Writes histogram data into the array histogramData.
+        /// The argument block will always be zero unless routing is used. 
+        let private getHistogram (deviceIndex:int) (histogramData:int[]) (block:int)  = asyncChoice{
+            let success = GetHistogram (deviceIndex, histogramData, block)
+            return histogramData}
 
-    /// Returns time period over which experiment was running. 
-    let getMeasurmentTime deviceIndex = asyncChoice{
-        let mutable elasped : double = Unchecked.defaultof<_>
-        let time =  GetElapsedMeasTime (deviceIndex, &elasped) 
-        return time}
+        ///Clears the histogram from picoHarps memrory
+        /// The argument block will always be zero unless routing is used. 
+        let private clearMemrory deviceIndex block = asyncChoice{
+            let success = ClearHistMem (deviceIndex, block)
+            return success}
+
+        /// Ties together functions needed to take a single measurment 
+        let measurmentSingle deviceIndex (histogram : Histogram) (array : int[]) = asyncChoice{ 
+            let! clear = clearMemrory deviceIndex 0 
+            let! bin = setBinning 0 histogram
+            let! overflow = stopOverflow 0 histogram
+            let! start = startMeasurments deviceIndex histogram  
+            let! endMeasurment = endMeasurments deviceIndex
+            let! histogram = getHistogram deviceIndex array 0
+            return histogram}
+
+        /// Calculates the total counts measured by summing the histogram channels.
+        let countTotal (pinnedArray: int []) =  Array.sum pinnedArray
+
+    module query =
        
-    /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
-    let getCTCStatus deviceIndex = asyncChoice{
-        let mutable ctcStatus : int = Unchecked.defaultof<_>
-        let success = CTCStatus (deviceIndex, &ctcStatus)
-        return success}
+        /// Returns time period over which experiment was running. 
+        let getMeasurmentTime deviceIndex = asyncChoice{
+            let mutable elasped : double = Unchecked.defaultof<_>
+            let time =  GetElapsedMeasTime (deviceIndex, &elasped) 
+            return time}
+           
+        /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
+        let getCTCStatus deviceIndex = asyncChoice{
+            let mutable ctcStatus : int = Unchecked.defaultof<_>
+            let success = CTCStatus (deviceIndex, &ctcStatus)
+            return success}
 
-    /// Writes histogram data into the array histogramData.
-    /// The argument block will always be zero unless routing is used. 
-    let getHistogram (deviceIndex:int) (histogramData:int[]) (block:int)  = asyncChoice{
-        let success = GetHistogram (deviceIndex, histogramData, block)
-        return histogramData}
 
-    ///Clears the histogram from picoHarps memrory
-    /// The argument block will always be zero unless routing is used. 
-    let clearMemrory deviceIndex block = asyncChoice{
-        let success = ClearHistMem (deviceIndex, block)
-        return success}
 
-    /// Calculates the total counts measured by summing the histogram channels.
-    let countTotal (pinnedArray: int []) =  Array.sum pinnedArray
+  
+  

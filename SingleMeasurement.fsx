@@ -69,15 +69,12 @@ module Info =
         
         return propeties
              }
-
+                    
 
 Native.OpenDevice (0, serialNumber)
 Initialise.initialiseMode 0 Histogram  |> Async.RunSynchronously
 Histogram.setBinning 0 histogram  |> Async.RunSynchronously
-Histogram.clearHistogramMemrory 0 0 |> Async.RunSynchronously
-Histogram.startMeasurments 0 histogram  |> Async.RunSynchronously
-Histogram.endMeasurments 0  |> Async.RunSynchronously
-Histogram.getHistogram 0 dataArray 0  |> Async.RunSynchronously
+Histogram.measurmentSingle 0 histogram dataArray |> Async.RunSynchronously
 Info.info 0 |> Async.RunSynchronously
 Native.CloseDevice 0
 
