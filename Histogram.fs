@@ -63,7 +63,7 @@ module Histogram =
 
     ///Clears the histogram from picoHarps memrory
     /// The argument block will always be zero unless routing is used. 
-    let clearHistogramMemrory deviceIndex block = asyncChoice{
+    let clearMemrory deviceIndex block = asyncChoice{
         let success = ClearHistMem (deviceIndex, block)
         return success}
 

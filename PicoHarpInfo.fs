@@ -12,36 +12,38 @@ open Endorphin.Instrument.PicoHarp300.Native
 
 [<AutoOpen>]
 module PicoHarpInfo =
-    
+        
     /// Returns the PicoHarp's serial number.
     let GetSerialNumber deviceIndex = asyncChoice{
         let serial = stringBuilder(String_8)
         let success = GetSerialNumber (deviceIndex , serial)
         return serial}
-
-    /// Returens the PicoHarp's model number, part number ans version.
-    let hardwareInformation deviceIndex = asyncChoice{
-        let model = stringBuilder(String_16)
-        let partnum = stringBuilder(String_8)
-        let vers = stringBuilder(String_8)
-        let hardware = GetHardwareInfo (deviceIndex, model, partnum, vers)
-        return (model, partnum, vers)} 
     
-    /// Returns the model number from the hardwareImformation tuple. 
-    let model = function
-        | (x, y, z) -> x
-        |_ -> failwithf "No tuple"
-    
-    /// Returns the part number number from the hardwareImformation tuple. 
-    let partnum = function
-        | (x, y, z) -> y
-        |_ -> failwithf "No tuple"
+    [<AutoOpen>]
+    module HardwareInfo = 
+       
+        /// Returens the PicoHarp's model number, part number ans version.
+        let hardwareInformation deviceIndex = asyncChoice{
+            let model = stringBuilder(String_16)
+            let partnum = stringBuilder(String_8)
+            let vers = stringBuilder(String_8)
+            let hardware = GetHardwareInfo (deviceIndex, model, partnum, vers)
+            return (model, partnum, vers)} 
+        
+        /// Returns the model number from the hardwareImformation tuple. 
+        let tupleModel = function
+            | (x, y, z) -> x
+            |_ -> failwithf "No tuple"
+        
+        /// Returns the part number number from the hardwareImformation tuple. 
+        let tuplePartnum = function
+            | (x, y, z) -> y
+            |_ -> failwithf "No tuple"
 
-    /// Returns the version number from the hardwareImformation tuple.     
-    let vers = function
-        | (x, y, z) -> z
-        |_ -> failwithf "No tuple"
-
+        /// Returns the version number from the hardwareImformation tuple.     
+        let tupleVers = function
+            | (x, y, z) -> z
+            |_ -> failwithf "No tuple"
 
     /// Returns the histogram base resolution (the PicoHarp needs to be in histogram mode for function to return a success)
     let getBaseResolution deviceIndex = asyncChoice{

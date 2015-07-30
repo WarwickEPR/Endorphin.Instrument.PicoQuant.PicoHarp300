@@ -75,7 +75,7 @@ module Parsing =
         let zeroCross zero = General.voltsConvert (zero.ZeroCross)
 
     [<AutoOpen>]
-    module Histogram =
+    module Hist =
         
         /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
         let binningNumber resolution = 

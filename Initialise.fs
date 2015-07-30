@@ -27,7 +27,7 @@ module Initialise =
 
     /// Sets the PicoHarps mode.
     let initialiseMode deviceIndex initalMode = asyncChoice{
-        let success = Initialise (deviceIndex, modeNumber(initalMode))
+        let success = InitialiseMode (deviceIndex, modeNumber(initalMode))
         return sprintf "Initialisation: %i" success}
     
     /// Closes the PicoHarp.

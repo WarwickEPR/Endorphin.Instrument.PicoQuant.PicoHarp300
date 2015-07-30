@@ -36,7 +36,7 @@ module Native =
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_Initialize")>]
     /// Sets the mode of the PicoHarp, modes 0 , 2 or 3.
-    extern int Initialise (int devidx, int mode);
+    extern int InitialiseMode (int devidx, int mode);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetHardwareInfo")>]
     /// Returns model number, part number and hardware version. 

@@ -4,8 +4,7 @@
 #r "NationalInstruments.Common.dll"
 #r "NationalInstruments.VisaNS.dll"
 #r "FSharp.PowerPack.dll"
-#r "bin/Debug/Endorphin.Instrument.PicoHarp300.dll"
-
+#r "bin/Debug/PicoHarp300.dll"
 
 open Microsoft.FSharp.NativeInterop
 open System.Runtime.InteropServices
@@ -17,12 +16,14 @@ open Endorphin.Core.StringUtils
 open Endorphin.Instrument.PicoHarp300
 open ExtCore.Control
 
-  
 /// Builds a strings to write the serial number into. 
 let serialNumber = StringBuilder (8)
 
+/// Array to stroe data in.
+let dataArray = Array.create 65535 1
+
 /// Type containing histogram propeties.
-let histogramPropeties = {
+let histogram = {
     BinWidth = Width_4ps;
     AcquisitionTime = Time_nano 10.0;
     Overflow = Off;}
@@ -37,34 +38,13 @@ type DevicePropeties = {
     BaseResolution : string    
     Features : int}
 
-/// Returns the model number from the hardwareImformation tuple. 
-let private model = function
-    | (x:StringBuilder, y:StringBuilder, z:StringBuilder) -> x
-    |_ -> failwithf "No tuple"
-
-/// Returns the part number number from the hardwareImformation tuple. 
-let private partnum = function
-    | (x:StringBuilder, y:StringBuilder, z:StringBuilder) -> y
-    |_ -> failwithf "No tuple"
-
-/// Returns the version number from the hardwareImformation tuple.     
-let private vers = function
-    | (x:StringBuilder, y:StringBuilder, z:StringBuilder) -> z
-    |_-> failwithf "No tuple"
-
 module Info = 
    
     /// Returns all PicoHarp imformation in the form of the DevicePropeties type. 
     let info deviceIndex = asyncChoice{
-       
-        let! openDevice = Initialise.openDevice 0 
-        
-        let mode = Initialise.initialiseMode (Parsing.Initialise.modeNumber(Histogramming))
-        
-        let! bin = Histogram.setBinning 0 histogramPropeties 
 
         /// Returns hardware info.
-        let! hardware = PicoHarpInfo.hardwareInformation deviceIndex   
+        let! hardware = PicoHarpInfo.HardwareInfo.hardwareInformation deviceIndex   
        
         /// Returns serial number.
         let! serial = PicoHarpInfo.GetSerialNumber deviceIndex
@@ -79,9 +59,9 @@ module Info =
         let propeties  = {
             DeviceIndex = 0;
             SerialNumber = serial;
-            Model = model hardware;
-            PartNumber = partnum hardware;
-            Version = vers hardware;
+            Model = PicoHarpInfo.HardwareInfo.tupleModel hardware;
+            PartNumber = PicoHarpInfo.HardwareInfo.tuplePartnum hardware;
+            Version =  PicoHarpInfo.HardwareInfo.tupleVers hardware
             BaseResolution = baseRes;
             Features = features;}
         
@@ -90,27 +70,15 @@ module Info =
         return propeties
              }
 
-Initialise.openDevice 0 
+
+Native.OpenDevice (0, serialNumber)
+Initialise.initialiseMode 0 Histogram  |> Async.RunSynchronously
+Histogram.setBinning 0 histogram  |> Async.RunSynchronously
+Histogram.clearHistogramMemrory 0 0 |> Async.RunSynchronously
+Histogram.startMeasurments 0 histogram  |> Async.RunSynchronously
+Histogram.endMeasurments 0  |> Async.RunSynchronously
+Histogram.getHistogram 0 dataArray 0  |> Async.RunSynchronously
 Info.info 0 |> Async.RunSynchronously
-Native.PH_CloseDevice(0)
+Native.CloseDevice 0
 
-   /// let initial = asyncChoice{
-        /// Sets the PicoHarp's mode.
-      ///  let initialise = Initialise.initialiseMode deviceIndex Histogramming 
-        /// Sets the bin width. 
-   //     let binWidth = Histogram.setBinning deviceIndex histogramPropeties 
-        /// Clears Picoharps memrory. Block argument will always be zero.
-    //    let clear = Histogram.clearHistogramMemrory deviceIndex 0
-        /// Start measurment.
-    //    let startMeas = Histogram.startMeasurments deviceIndex histogramPropeties 
-        /// Ends measurments. 
-    //    let endMeas = Histogram.endMeasurments deviceIndex
-        /// Writes histogram data to an array.
-   //     let getData = Histogram.getHistogram (deviceIndex) (histogramDataWriteTo) (0)
-
-        
-
-    
-
-     
 

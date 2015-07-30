@@ -8,7 +8,7 @@
     <ProjectGuid>cae4252b-663b-42a9-8353-fc4617827a3b</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Library1</RootNamespace>
-    <AssemblyName>Library1</AssemblyName>
+    <AssemblyName>PicoHarp300</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <Name>Endorphin.Instrument.PicoHarp300</Name>
@@ -63,6 +63,7 @@
     <None Include="OpenDevice.fsx" />
     <None Include="NumberofCounts.fsx" />
     <None Include="SingleMeasurement.fsx" />
+    <None Include="Test.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">
