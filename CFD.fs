@@ -16,7 +16,7 @@ module CFD =
         let private rangeCFD (cfd:CFD) = 
             let level = discriminatorLevel cfd 
             let cross = zeroCross cfd
-            if (level < 0.0 || level > 800.0) then
+            if (level < 0.0 || level < -800.0) then
                 failwithf "Discriminator level outside of range: 0 - 800 mV."
             elif (cross < 0.0 || cross > 20.0) then 
                 failwithf "Zerocorss setting outside of range: 0 - 20 mV."

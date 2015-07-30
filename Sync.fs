@@ -14,7 +14,7 @@ module Sync =
     
     /// Sets the rate divider of the sync/channel 0.
     let setSyncDiv deviceIndex (sync:Sync) = asyncChoice{
-        let div = rateDivider sync 
+        let div = rateDividerNumber sync 
         let success = SetSyncDiv (deviceIndex, div)
         return success}
 

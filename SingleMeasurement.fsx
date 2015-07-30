@@ -59,7 +59,7 @@ module Info =
        
         let! openDevice = Initialise.openDevice 0 
         
-        let mode = Initialise.initialiseMode (Parsing.modeNumber(Histogramming))
+        let mode = Initialise.initialiseMode (Parsing.Initialise.modeNumber(Histogramming))
         
         let! bin = Histogram.setBinning 0 histogramPropeties 
 

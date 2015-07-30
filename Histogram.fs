@@ -30,7 +30,7 @@ module Histogram =
 
     /// Sets the bin resolution for the histogram.
     let setBinning deviceIndex (resolution:Histogram) = asyncChoice{
-        let success = SetBinning (deviceIndex, (binning resolution))
+        let success = SetBinning (deviceIndex, (binningNumber resolution))
         return sprintf "Set binning: %i" success}
 
     /// Starts histogram mode measurments, requires an acquisition time aka the period of time to take measurments over.

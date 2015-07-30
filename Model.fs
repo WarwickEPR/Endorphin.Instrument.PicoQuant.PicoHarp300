@@ -11,7 +11,7 @@ open ExtCore.Control
 module Model = 
 
     /// Type containing error message and string.
-    type errorString = {Number : int; Meassage : string}
+    type ErrorString = {Number : int; Meassage : string}
 
     /// Switch type, if On then an int value can be specified.
     type OnorOff = On | Off
@@ -63,9 +63,12 @@ module Model =
 
         ///Three possible modes, likley this programme will only deal with Histogramming.
         type Modes = 
-            | Histogramming
+            | Histogram
             | T2
             | T3
+        
+        /// Sets offset, only possible in modes Histogram and T3.
+        type Offset = Offset of offset : Switch 
     
     ///Contains types relating to propeties of the histogram.    
     [<AutoOpen>]
@@ -83,7 +86,7 @@ module Model =
             | Width_512ps                                                                               
         
         ///Histogram requires 3 parameters, number of bins, bin width and aquisition time. Always 65536 bins. 
-        type Histogram = {
+        type Histogram = { 
             BinWidth : Width
             AcquisitionTime : Time
             Overflow : Switch}

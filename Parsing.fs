@@ -14,14 +14,14 @@ module Parsing =
     module General = 
        
         /// Builds a string for PicoHarp to write into.
-        let internal stringBuilder = function
+        let stringBuilder = function
             | String_8 -> StringBuilder (8)
             | String_16 -> StringBuilder (16)
             | String_40 -> StringBuilder (40)
             | String_16384 -> StringBuilder (16384)
         
         /// Converts all times into seconds. 
-        let internal timeConvert = function 
+        let timeConvert = function 
             | Time_pico time -> (1E-12)*time
             | Time_nano time ->  (1E-9)*time
             | Time_micro time -> (1E-6)*time
@@ -29,7 +29,7 @@ module Parsing =
             | Time_second time -> time
 
         /// Converts all voltages into millivolts.
-        let internal voltsConvert = function
+        let voltsConvert = function
             | Volts_mV voltage -> voltage
             | Volts_V voltage -> voltage*1000.0                                                                                                                                 
     
@@ -37,25 +37,25 @@ module Parsing =
     module Initialise = 
        
         /// Converts type Mode into integers. 
-        let internal modeNumber = function
-            | Histogramming -> 0
+        let modeNumber = function
+            | Histogram -> 0
             | T2 -> 2
             | T3 -> 3
 
         /// Converts mode integer back into type Mode.
-        let internal parseMode = function
-            | 0 -> Histogramming
+        let parseMode = function
+            | 0 -> Histogram
             | 2 -> T2
             | 3 -> T3
             | _ -> failwithf "Invalid mode command"
 
         /// Converts type InputChannel into corresponding integers.
-        let internal channelNumber = function
+        let channelNumber = function
             | Channel_0 -> 0
             | Channel_1 -> 1
 
         /// Converts channel number back into type InputChannel. 
-        let internal parseChannel = function
+        let parseChannel = function
             | 0 -> Channel_0
             | 1 -> Channel_1
             | _ -> failwithf "Invaild channel"
@@ -64,21 +64,21 @@ module Parsing =
     module CFDConvert =
         
         /// Takes InputChannel from record type CFD and converts into an integer.
-        let internal inputChannel channel = 
+        let inputChannel channel = 
             if channel.InputChannel = Channel_0 then 0
             else 1
         
         /// Takes DiscriminatorLevel from type CFD and converts into a voltage in units volts.
-        let internal discriminatorLevel level = General.voltsConvert (level.DiscriminatorLevel) 
+        let discriminatorLevel level = General.voltsConvert (level.DiscriminatorLevel) 
         
         /// Takes ZeroCross from type CFD and converts into a voltage in units volts.
-        let internal zeroCross zero = General.voltsConvert (zero.ZeroCross)
+        let zeroCross zero = General.voltsConvert (zero.ZeroCross)
 
     [<AutoOpen>]
     module Histogram =
         
         /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
-        let internal binningNumber resolution = 
+        let binningNumber resolution = 
             match resolution.BinWidth with
             | Width_4ps ->   0
             | Width_8ps  ->  1
@@ -90,7 +90,7 @@ module Parsing =
             | Width_512ps -> 7
 
         /// Converts bin width base number into type of Width.
-        let internal parseBinning number =
+        let parseBinning number =
             match number with 
             | 0 -> Width_4ps
             | 1 -> Width_8ps
@@ -103,14 +103,14 @@ module Parsing =
             | _ -> failwithf "Not a valid resolution."
 
         /// Takes aquisition time from type histogram and convert into milliseconds. 
-        let internal acquisitionTime time = General.timeConvert (time.AcquisitionTime)*(1E-3) 
+        let acquisitionTime time = General.timeConvert (time.AcquisitionTime)*(1E-3) 
            
     [<AutoOpen>]
     /// Channel 1 settings.
     module ChannelSync = 
         
         /// Converts type Rate into corresponding number.
-        let internal rateDividerNumber rate = 
+        let rateDividerNumber rate = 
             match rate.RateDivider with
             | RateDivider_1 -> 1 
             | RateDivider_2 -> 2
@@ -118,7 +118,7 @@ module Parsing =
             | RateDivider_8 -> 8
 
         /// Converts number into type Rate.
-        let internal parseRateDivider number =
+        let parseRateDivider number =
             match number with 
             | 1 -> RateDivider_1
             | 2 -> RateDivider_2
@@ -128,5 +128,5 @@ module Parsing =
 
        
        /// Converts time into picoseconds 
-        let internal offset time = (General.timeConvert(time))*(1E-12)
+        let offset time = (General.timeConvert(time))*(1E-12)
         
