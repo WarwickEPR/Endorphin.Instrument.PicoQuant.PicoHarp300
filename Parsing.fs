@@ -78,7 +78,7 @@ module Parsing =
     module Histogram =
         
         /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
-        let internal binning resolution = 
+        let internal binningNumber resolution = 
             match resolution.BinWidth with
             | Width_4ps ->   0
             | Width_8ps  ->  1
@@ -89,6 +89,19 @@ module Parsing =
             | Width_256ps -> 6 
             | Width_512ps -> 7
 
+        /// Converts bin width base number into type of Width.
+        let internal parseBinning number =
+            match number with 
+            | 0 -> Width_4ps
+            | 1 -> Width_8ps
+            | 2 -> Width_16ps
+            | 3 -> Width_32ps
+            | 4 -> Width_64ps
+            | 5 -> Width_128ps
+            | 6 -> Width_256ps
+            | 7 -> Width_512ps
+            | _ -> failwithf "Not a valid resolution."
+
         /// Takes aquisition time from type histogram and convert into milliseconds. 
         let internal acquisitionTime time = General.timeConvert (time.AcquisitionTime)*(1E-3) 
            
@@ -96,12 +109,23 @@ module Parsing =
     /// Channel 1 settings.
     module ChannelSync = 
         
-        let internal rateDivider rate = 
+        /// Converts type Rate into corresponding number.
+        let internal rateDividerNumber rate = 
             match rate.RateDivider with
             | RateDivider_1 -> 1 
             | RateDivider_2 -> 2
             | RateDivider_4 -> 4
             | RateDivider_8 -> 8
+
+        /// Converts number into type Rate.
+        let internal parseRateDivider number =
+            match number with 
+            | 1 -> RateDivider_1
+            | 2 -> RateDivider_2
+            | 3 -> RateDivider_4
+            | 4 -> RateDivider_8
+            | _ -> failwithf "Not a valid rate division."
+
        
        /// Converts time into picoseconds 
         let internal offset time = (General.timeConvert(time))*(1E-12)

@@ -10,6 +10,9 @@ open ExtCore.Control
 [<AutoOpen>]
 module Model = 
 
+    /// Type containing error message and string.
+    type errorString = {Number : int; Meassage : string}
+
     /// Switch type, if On then an int value can be specified.
     type OnorOff = On | Off
     type Switch = On of int |Off
@@ -36,6 +39,13 @@ module Model =
     type Volts = 
         | Volts_mV of float
         | Volts_V of float
+
+    /// Type containing required stringBuilder sizes.
+    type StringPointers =
+        | String_8 
+        | String_16   
+        | String_40 
+        | String_16384 
 
     [<AutoOpen>]
     module SetupInputChannel = 
@@ -75,27 +85,22 @@ module Model =
         ///Histogram requires 3 parameters, number of bins, bin width and aquisition time. Always 65536 bins. 
         type Histogram = {
             BinWidth : Width
-            AcquisitionTime: Time
+            AcquisitionTime : Time
             Overflow : Switch}
-        
-        /// Type containing required stringBuilder sizes.
-        type StringPointers =
-            | String_8 
-            | String_16   
-            | String_40 
-            | String_16384 
         
         /// Channel 1 is used as a sync input for time resolved fluorescence with a pulsed exitation source.
         /// For correlation experiments ignore the sync settings. 
     [<AutoOpen>]
     module ChannelSync = 
         
+        /// Type containing possible rate divisions.
         type Rate = 
             | RateDivider_1 
             | RateDivider_2
             | RateDivider_4
             | RateDivider_8
         
+        /// Type containing possible sync channel settings (channel 1). 
         type Sync = {
             RateDivider : Rate
             Offset : Time}
