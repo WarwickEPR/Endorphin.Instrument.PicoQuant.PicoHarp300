@@ -18,35 +18,35 @@ module Native =
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_OpenDevice")>]
     /// Opens the PicoHarp and writes its serial number to the space created by StringBuilder.
-    extern int PH_OpenDevice (int devidx, StringBuilder serial);
+    extern int OpenDevice (int devidx, StringBuilder serial);
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_CloseDevice")>]
     /// Closes the PicoHarp.
-    extern int PH_CloseDevice (int devidx); 
+    extern int CloseDevice (int devidx); 
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_SetBinning")>]
     /// Sets the bin resolution for the histogram.
-    extern int PH_SetBinning (int devidx, int binning); 
+    extern int SetBinning (int devidx, int binning); 
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_Initialize")>]
     /// Sets the mode of the PicoHarp, modes 0 , 2 or 3.
-    extern int PH_Initialize (int devidx, int mode);
+    extern int Initialize (int devidx, int mode);
    
     [<DllImport("PHLib.Dll", EntryPoint = "PH_StartMeas")>]
     /// Starts taking measurments. 
-    extern int PH_StartMeas (int devidx, int tacq);
+    extern int StartMeasurment (int devidx, int tacq);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_StopMeas")>]
     /// Stops measurments. 
-    extern int PH_StopMeas (int devidx);
+    extern int StopMeasurment (int devidx);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetHistogram")>]
     /// Writes histogram data to an empty array chcount. 
-    extern int PH_GetHistogram (int devidx, int [] chcount, int clear);
+    extern int GetHistogram (int devidx, int [] chcount, int clear);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_ClearHistMem")>]
     /// Clear all stored histograms from memrory.
-    extern int PH_ClearHistMem (int devidx, int block);
+    extern int ClearHistMem (int devidx, int block);
 
         
 module Initial = 
@@ -61,42 +61,42 @@ module Initial =
 module CallFunctions = 
 
     /// Sets the bin resolution. 
-    let setResolution bins = Native.PH_SetBinning (0, bins)
+    let setResolution bins = Native.SetBinning (0, bins)
      
     /// Starts histogram mode measurments, requires an acquisition time aka the period of time to take measurments over.
     let startMeasurments deviceIndex time = asyncChoice{
-        let success =  Native.PH_StartMeas (deviceIndex , int (time)) 
+        let success =  Native.StartMeasurment (deviceIndex , int (time)) 
         return success}
     /// Stops histogram mode measurments. 
     let endMeasurments deviceIndex = asyncChoice{
-        let success = Native.PH_StopMeas (deviceIndex)
+        let success = Native.StopMeasurment (deviceIndex)
         return success}
     
     /// Writes histogram data in the pinned array.
     /// The argument block will always be zero unless routing is used. 
     let getHistogram deviceIndex block = asyncChoice{
-        let success = Native.PH_GetHistogram (deviceIndex, Initial.histogramDataWriteTo , block)
+        let success = Native.GetHistogram (deviceIndex, Initial.histogramDataWriteTo , block)
         return success}
 
     /// Clears histograms from the PicoHarps memrory.
     let memClear deviceIndex block = asyncChoice{
-        let success = Native.PH_ClearHistMem (deviceIndex , block)
+        let success = Native.ClearHistMem (deviceIndex , block)
         return success}
     
     /// Calculates the total counts measured by summing the histogram channels.
     let countTotal (array : int []) =  Array.sum array
 
     /// Closes the PicoHarp. 
-    let closeDevice deviceIndex = Native.PH_CloseDevice (deviceIndex)
+    let closeDevice deviceIndex = Native.CloseDevice (deviceIndex)
 
-Native.PH_OpenDevice (0, Initial.serialNumber)
-Native.PH_Initialize (0, 0)
+Native.OpenDevice (0, Initial.serialNumber)
+Native.Initialize (0, 0)
 CallFunctions.setResolution 1
 CallFunctions.memClear 0 0 |> Async.RunSynchronously
 CallFunctions.startMeasurments 0 10.0
 CallFunctions.endMeasurments 0
 CallFunctions.getHistogram 0 0 |> Async.RunSynchronously
-Native.PH_CloseDevice(0)
+Native.CloseDevice(0)
 
 
     

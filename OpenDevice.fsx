@@ -18,35 +18,35 @@ module Native =
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetLibraryVersion")>]
     /// Returns the version of PHLinb.DLL, writes it to space created by StringBuilder.
-    extern int PH_GetLibraryVersion (StringBuilder vers);
+    extern int GetLibraryVersion (StringBuilder vers);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_OpenDevice")>]
     /// Opens the PicoHarp and writes its serial number to the space created by StringBuilder.
-    extern int PH_OpenDevice (int devidx, StringBuilder serial);
+    extern int OpenDevice (int devidx, StringBuilder serial);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetResolution")>]
     /// Returns the bin width of the histogram.
-    extern int PH_GetResolution (int devidx, [<Out>] double& resolution);  
+    extern int GetResolution (int devidx, [<Out>] double& resolution);  
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_CloseDevice")>]
     /// Closes the PicoHarp.
-    extern int PH_CloseDevice (int devidx); 
+    extern int CloseDevice (int devidx); 
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_SetBinning")>]
     /// Sets the bin resolution for the histogram.
-    extern void PH_SetBinning (int devidx, int binning); 
+    extern void SetBinning (int devidx, int binning); 
     
     [<DllImport("PHLib.Dll", EntryPoint = "PH_Initialize")>]
     /// Sets the mode of the PicoHarp, modes 0 , 2 or 3.
-    extern void PH_Initialize (int devidx, int mode);
+    extern void Initialize (int devidx, int mode);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_GetHistogram")>]
     /// Writes histogram data to an empty array chcount. 
-    extern int PH_GetHistogram (int devidx, int* chcount, int clear);
+    extern int GetHistogram (int devidx, int* chcount, int clear);
 
     [<DllImport("PHLib.Dll", EntryPoint = "PH_ClearHistMem")>]
     /// Clear all stored histograms from memrory.
-    extern int PH_ClearHistMem (int devidx, int block);
+    extern int ClearHistMem (int devidx, int block);
 
 module CallFunctions = 
 
@@ -56,19 +56,19 @@ module CallFunctions =
     
     /// Opens the deice and returns its serial number. 
     let openDevice deviceIndex = asyncChoice{ 
-        Native.PH_OpenDevice( deviceIndex , serialNumber)
+        Native.OpenDevice( deviceIndex , serialNumber)
         return serialNumber} 
     
-    let setResolution bins = Native.PH_SetBinning (0, bins)
+    let setResolution bins = Native.SetBinning (0, bins)
 
     let getBaseResolution deviceIndex = asyncChoice{
         let mutable resolution : double = Unchecked.defaultof<_>
-        let error = Native.PH_GetResolution(deviceIndex , &resolution)
+        let error = Native.GetResolution(deviceIndex , &resolution)
         printfn "Error?: %d" error
         return printfn "%f" (resolution)}
    
    /// Returns the library version of PHLib.Dll.
-    let library = Native.PH_GetLibraryVersion (libraryVersion)
+    let library = Native.GetLibraryVersion (libraryVersion)
        
     /// Creates an initilised array for storing histogram data.
     let histogramData : int array = Array.create 65536 1 
@@ -78,29 +78,29 @@ module CallFunctions =
     /// Writes histogram data in the pinned array.
     /// The argument block will always be zero unless routing is used. 
     let getHistogram deviceIndex block = asyncChoice{
-        let success = Native.PH_GetHistogram (deviceIndex, pinnedHistogram.Ptr, block)
+        let success = Native.GetHistogram (deviceIndex, pinnedHistogram.Ptr, block)
         return pinnedHistogram}
 
-    let closeDevice deviceIndex = Native.PH_CloseDevice (deviceIndex)
+    let closeDevice deviceIndex = Native.CloseDevice (deviceIndex)
 
     let memClear deviceIndex block = asyncChoice{
-        let success = Native.PH_ClearHistMem (deviceIndex , block)
+        let success = Native.ClearHistMem (deviceIndex , block)
         return success}
 
 ///let deviceIndex = 0, always true if the PicoHarp is used in isolation. 
 let libraryVersion = StringBuilder(8)
-Native.PH_GetLibraryVersion libraryVersion
+Native.GetLibraryVersion libraryVersion
 printfn "%s" (libraryVersion.ToString())
 
 let opendevice = StringBuilder(8)
-Native.PH_OpenDevice (0, opendevice)
+Native.OpenDevice (0, opendevice)
 printfn "%s" (opendevice.ToString())
-Native.PH_Initialize(0, 0)
+Native.Initialize(0, 0)
 CallFunctions.setResolution 1
 CallFunctions.getBaseResolution 0 |> Async.RunSynchronously
 CallFunctions.memClear 0 0 |> Async.RunSynchronously
 CallFunctions.getHistogram 0 0 |> Async.RunSynchronously
-Native.PH_CloseDevice(0)
+Native.CloseDevice(0)
 
 
 

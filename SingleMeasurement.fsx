@@ -20,10 +20,6 @@ open ExtCore.Control
   
 /// Builds a strings to write the serial number into. 
 let serialNumber = StringBuilder (8)
-/// Creates an initilised array for storing histogram data.
-let histogramData = Array.create 65536 14
-/// Creates a pinned array for PicoHarp to write into.
-let histogramDataWriteTo = Array.create 65536 14
 
 /// Type containing histogram propeties.
 let histogramPropeties = {
@@ -61,6 +57,12 @@ module Info =
     /// Returns all PicoHarp imformation in the form of the DevicePropeties type. 
     let info deviceIndex = asyncChoice{
        
+        let! openDevice = Initialise.openDevice 0 
+        
+        let mode = Initialise.initialiseMode (Parsing.modeNumber(Histogramming))
+        
+        let! bin = Histogram.setBinning 0 histogramPropeties 
+
         /// Returns hardware info.
         let! hardware = PicoHarpInfo.hardwareInformation deviceIndex   
        
@@ -83,13 +85,14 @@ module Info =
             BaseResolution = baseRes;
             Features = features;}
         
+        printfn "%A" propeties
+        
         return propeties
              }
 
-       
 Initialise.openDevice 0 
 Info.info 0 |> Async.RunSynchronously
-Initialise.closeDevice 0
+Native.PH_CloseDevice(0)
 
    /// let initial = asyncChoice{
         /// Sets the PicoHarp's mode.

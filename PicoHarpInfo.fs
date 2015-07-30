@@ -16,7 +16,7 @@ module PicoHarpInfo =
     /// Returns the PicoHarp's serial number.
     let GetSerialNumber deviceIndex = asyncChoice{
         let serial = stringBuilder(String_8)
-        let success = PH_GetSerialNumber (deviceIndex , serial)
+        let success = GetSerialNumber (deviceIndex , serial)
         return serial}
 
     /// Returens the PicoHarp's model number, part number ans version.
@@ -24,7 +24,7 @@ module PicoHarpInfo =
         let model = stringBuilder(String_16)
         let partnum = stringBuilder(String_8)
         let vers = stringBuilder(String_8)
-        let hardware = PH_GetHardwareInfo (deviceIndex, model, partnum, vers)
+        let hardware = GetHardwareInfo (deviceIndex, model, partnum, vers)
         return (model, partnum, vers)} 
     
     /// Returns the model number from the hardwareImformation tuple. 
@@ -46,12 +46,12 @@ module PicoHarpInfo =
     /// Returns the histogram base resolution (the PicoHarp needs to be in histogram mode for function to return a success)
     let getBaseResolution deviceIndex = asyncChoice{
         let mutable resolution : double = Unchecked.defaultof<_>
-        let success = PH_GetResolution(deviceIndex , &resolution) 
+        let success = GetResolution(deviceIndex , &resolution) 
         return sprintf "Set resolution: %i" success}
 
     /// Returns the features of the PicoHarp as a bit pattern.
     let getFeatures deviceIndex = asyncChoice{
         let mutable features : int = Unchecked.defaultof<_>
-        let featureBit = PH_GetFeatures (deviceIndex , &features)
+        let featureBit = GetFeatures (deviceIndex , &features)
         return featureBit}
         

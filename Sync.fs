@@ -15,11 +15,11 @@ module Sync =
     /// Sets the rate divider of the sync/channel 0.
     let setSyncDiv deviceIndex (sync:Sync) = asyncChoice{
         let div = rateDivider sync 
-        let success = PH_SetSyncDiv (deviceIndex, div)
+        let success = SetSyncDiv (deviceIndex, div)
         return success}
 
     /// Sets the offset of the sync/channel 0.
     let SetSyncOffset deviceIndex (sync:Sync) = asyncChoice{
         let off = offset sync.Offset
-        let success = PH_SetSyncOffset (deviceIndex, int(off))
+        let success = SetSyncOffset (deviceIndex, int(off))
         return success}

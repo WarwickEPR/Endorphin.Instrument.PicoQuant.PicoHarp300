@@ -22,7 +22,7 @@ module CFD =
                 failwithf "Zerocorss setting outside of range: 0 - 20 mV."
             else 0
 
-         /// Takes type of CFD and converts elements into integers then passes to the function PH_SetInputCFD.
+        /// Takes type of CFD and converts elements into integers then passes to the function PH_SetInputCFD.
         /// This sets the discriminator level and zero cross for the CFD in channels 1 or 2. 
         let initialiseCFD deviceIndex (cfd:CFD) = asyncChoice{
             let channel = inputChannel cfd
@@ -31,5 +31,5 @@ module CFD =
             if rangeCFD cfd <> 0 then 
                 return 0
             else 
-                let success = PH_SetInputCFD (deviceIndex, channel, int(level), int(cross))
+                let success = SetInputCFD (deviceIndex, channel, int(level), int(cross))
                 return success}
