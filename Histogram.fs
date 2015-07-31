@@ -8,11 +8,9 @@ open Endorphin.Core
 open Endorphin.Core.NationalInstruments
 open Endorphin.Core.StringUtils
 open ExtCore.Control
-open Endorphin.Instrument.PicoHarp300.Native
-
 
 module Histogram = 
-    
+     
     module   = 
      
         /// Sets the overflow limit on or off for the histogram bins.
@@ -50,15 +48,15 @@ module Histogram =
             let success = GetHistogram (deviceIndex, histogramData, block)
             return histogramData}
 
-        ///Clears the histogram from picoHarps memrory
+        ///Clears the histogram from picoHarps memory
         /// The argument block will always be zero unless routing is used. 
-        let private clearMemrory deviceIndex block = asyncChoice{
+        let private clearmemory deviceIndex block = asyncChoice{
             let success = ClearHistMem (deviceIndex, block)
             return success}
 
         /// Ties together functions needed to take a single measurment 
         let measurmentSingle deviceIndex (histogram : Histogram) (array : int[]) = asyncChoice{ 
-            let! clear = clearMemrory deviceIndex 0 
+            let! clear = clearmemory deviceIndex 0 
             let! bin = setBinning 0 histogram
             let! overflow = stopOverflow 0 histogram
             let! start = startMeasurments deviceIndex histogram  

@@ -8,125 +8,64 @@ open Endorphin.Core.StringUtils
 open ExtCore.Control
 
 [<AutoOpen>]
-module Parsing =
+module internal Parsing =
  
-    [<AutoOpen>]
-    module General = 
-       
-        /// Builds a string for PicoHarp to write into.
-        let stringBuilder = function
-            | String_8 -> StringBuilder (8)
-            | String_16 -> StringBuilder (16)
-            | String_40 -> StringBuilder (40)
-            | String_16384 -> StringBuilder (16384)
-        
-        /// Converts all times into seconds. 
-        let timeConvert = function 
-            | Time_pico time -> (1E-12)*time
-            | Time_nano time ->  (1E-9)*time
-            | Time_micro time -> (1E-6)*time
-            | Time_milli time -> (1E-3)*time
-            | Time_second time -> time
+    /// Converts type Mode into integers. 
+    let modeEnum = function
+        | Histogram -> ModeEnum.Histogram
 
-        /// Converts all voltages into millivolts.
-        let voltsConvert = function
-            | Volts_mV voltage -> voltage
-            | Volts_V voltage -> voltage*1000.0                                                                                                                                 
-    
-    [<AutoOpen>]
-    module Initialise = 
-       
-        /// Converts type Mode into integers. 
-        let modeNumber = function
-            | Histogram -> 0
-            | T2 -> 2
-            | T3 -> 3
+    /// Converts mode integer back into type Mode.
+    let parseMode = function
+        | ModeEnum.Histogram -> Histogram
+        | mode               -> failwithf "Unexpected mode enum value: %A." mode
 
-        /// Converts mode integer back into type Mode.
-        let parseMode = function
-            | 0 -> Histogram
-            | 2 -> T2
-            | 3 -> T3
-            | _ -> failwithf "Invalid mode command"
+    /// Converts type InputChannel into corresponding integers.
+    let channelEnum = function
+        | Channel0 -> ChannelEnum.Channel0
+        | Channel1 -> ChannelEnum.Channel1
 
-        /// Converts type InputChannel into corresponding integers.
-        let channelNumber = function
-            | Channel_0 -> 0
-            | Channel_1 -> 1
+    /// Converts channel number back into type InputChannel. 
+    let parseChannel = function
+        | ChannelEnum.Channel0 -> Channel0
+        | ChannelEnum.Channel1 -> Channel1
+        | channel              -> failwithf "Unexpected channel enum value: %A." channel
 
-        /// Converts channel number back into type InputChannel. 
-        let parseChannel = function
-            | 0 -> Channel_0
-            | 1 -> Channel_1
-            | _ -> failwithf "Invaild channel"
 
-    [<AutoOpen>]
-    module CFDConvert =
-        
-        /// Takes InputChannel from record type CFD and converts into an integer.
-        let inputChannel channel = 
-            if channel.InputChannel = Channel_0 then 0
-            else 1
-        
-        /// Takes DiscriminatorLevel from type CFD and converts into a voltage in units volts.
-        let discriminatorLevel level = General.voltsConvert (level.DiscriminatorLevel) 
-        
-        /// Takes ZeroCross from type CFD and converts into a voltage in units volts.
-        let zeroCross zero = General.voltsConvert (zero.ZeroCross)
+    /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
+    let resolutionEnum resolution = function        
+        | Resolution_4ps   -> ResolutionEnum.Resolution_4ps
+        | Resolution_8ps   -> ResolutionEnum.Resolution_8ps
+        | Resolution_16ps  -> ResolutionEnum.Resolution_16ps
+        | Resolution_32ps  -> ResolutionEnum.Resolution_32ps
+        | Resolution_64ps  -> ResolutionEnum.Resolution_64ps
+        | Resolution_128ps -> ResolutionEnum.Resolution_128ps
+        | Resolution_256ps -> ResolutionEnum.Resolution_256ps
+        | Resolution_512ps -> ResolutionEnum.Resolution_512ps
 
-    [<AutoOpen>]
-    module Hist =
-        
-        /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
-        let binningNumber resolution = 
-            match resolution.BinWidth with
-            | Width_4ps ->   0
-            | Width_8ps  ->  1
-            | Width_16ps ->  2
-            | Width_32ps ->  3
-            | Width_64ps ->  4
-            | Width_128ps -> 5
-            | Width_256ps -> 6 
-            | Width_512ps -> 7
+    /// Converts bin width base number into type of Width.
+    let parseResolution = function
+        | ResolutionEnum.Resolution_4ps   -> Resolution_4ps
+        | ResolutionEnum.Resolution_8ps   -> Resolution_8ps
+        | ResolutionEnum.Resolution_16ps  -> Resolution_16ps
+        | ResolutionEnum.Resolution_32ps  -> Resolution_32ps
+        | ResolutionEnum.Resolution_64ps  -> Resolution_64ps
+        | ResolutionEnum.Resolution_128ps -> Resolution_128ps
+        | ResolutionEnum.Resolution_256ps -> Resolution_256ps
+        | ResolutionEnum.Resolution_512ps -> Resolution_512ps
+        | resolution                      -> failwithf "Unexpected channel enum value: %A." resolution
 
-        /// Converts bin width base number into type of Width.
-        let parseBinning number =
-            match number with 
-            | 0 -> Width_4ps
-            | 1 -> Width_8ps
-            | 2 -> Width_16ps
-            | 3 -> Width_32ps
-            | 4 -> Width_64ps
-            | 5 -> Width_128ps
-            | 6 -> Width_256ps
-            | 7 -> Width_512ps
-            | _ -> failwithf "Not a valid resolution."
+    /// Converts type Rate into corresponding number.
+    let rateDividerEnum rate = function
+        | RateDivider_1 -> RateDividerEnum.RateDividerEnum_1 
+        | RateDivider_2 -> RateDividerEnum.RateDividerEnum_2
+        | RateDivider_4 -> RateDividerEnum.RateDividerEnum_4
+        | RateDivider_8 -> RateDividerEnum.RateDividerEnum_8
 
-        /// Takes aquisition time from type histogram and convert into milliseconds. 
-        let acquisitionTime time = General.timeConvert (time.AcquisitionTime)*(1E-3) 
-           
-    [<AutoOpen>]
-    /// Channel 1 settings.
-    module ChannelSync = 
-        
-        /// Converts type Rate into corresponding number.
-        let rateDividerNumber rate = 
-            match rate.RateDivider with
-            | RateDivider_1 -> 1 
-            | RateDivider_2 -> 2
-            | RateDivider_4 -> 4
-            | RateDivider_8 -> 8
-
-        /// Converts number into type Rate.
-        let parseRateDivider number =
-            match number with 
-            | 1 -> RateDivider_1
-            | 2 -> RateDivider_2
-            | 3 -> RateDivider_4
-            | 4 -> RateDivider_8
-            | _ -> failwithf "Not a valid rate division."
-
-       
-       /// Converts time into picoseconds 
-        let offset time = (General.timeConvert(time))*(1E-12)
+    /// Converts number into type Rate.
+    let parseRateDivider = function
+        | RateDividerEnum.RateDividerEnum_1 -> RateDivider_1
+        | RateDividerEnum.RateDividerEnum_2 -> RateDivider_2
+        | RateDividerEnum.RateDividerEnum_4 -> RateDivider_4
+        | RateDividerEnum.RateDividerEnum_8 -> RateDivider_8
+        | ratedivider                       -> failwithf "Unexpected rate division: %A." ratedivider
         

@@ -8,7 +8,6 @@ open Endorphin.Core
 open Endorphin.Core.NationalInstruments
 open Endorphin.Core.StringUtils
 open ExtCore.Control
-open Endorphin.Instrument.PicoHarp300.Native
 
 module CFD = 
         

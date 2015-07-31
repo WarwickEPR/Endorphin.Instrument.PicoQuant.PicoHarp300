@@ -51,8 +51,9 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ErrorString.fs" />
-    <Compile Include="Native.fs" />
+    <Compile Include="Error.fs" />
+    <Compile Include="NativeModel.fs" />
+    <Compile Include="NativeApi.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Parsing.fs" />
     <Compile Include="Initialise.fs" />
