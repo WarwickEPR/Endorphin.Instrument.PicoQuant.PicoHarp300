@@ -56,34 +56,34 @@ module internal Error =
         function
         | ErrorCode.NoError               -> "No Error"
         | ErrorCode.DeviceOpenFail        -> "PicoHarp has failed to open."
-        | ErrorCode.DeviceBusy            -> "The PicoHarp is busy, unable to send command."
+        | ErrorCode.DeviceBusy            -> "The PicoHarp is busy."
         | ErrorCode.DeviceHeventFail      -> 
         | ErrorCode.DeviceCallbsetFail    ->
         | ErrorCode.DeviceBarmapFail      ->
-        | ErrorCode.DeviceCloseFail       ->
-        | ErrorCode.DeviceResetFail       ->
-        | ErrorCode.DeviceGetversionFail  ->
-        | ErrorCode.DeviceVersionMismatch ->
-        | ErrorCode.DeviceNotOpen         ->
-        | ErrorCode.DeviceLocked          ->
+        | ErrorCode.DeviceCloseFail       -> "Unable to close the PicoHarp."
+        | ErrorCode.DeviceResetFail       -> "Unable to reset the PicoHarp."
+        | ErrorCode.DeviceGetversionFail  -> "Unable to retrieve the PicoHarp's version"
+        | ErrorCode.DeviceVersionMismatch -> 
+        | ErrorCode.DeviceNotOpen         -> "The PicoHarp has not been opened."
+        | ErrorCode.DeviceLocked          -> "The PicoHarp is locked."
         | ErrorCode.InstanceRunning       ->
-        | ErrorCode.InvalidArgument       ->
-        | ErrorCode.InvalidMode           ->
-        | ErrorCode.InvalidOption         ->
-        | ErrorCode.InvalidMemory         ->
+        | ErrorCode.InvalidArgument       -> "Invaild argument."
+        | ErrorCode.InvalidMode           -> "Invalid mode, possible modes: Histogram, T2, T3."
+        | ErrorCode.InvalidOption         -> "Invalid option."
+        | ErrorCode.InvalidMemory         -> 
         | ErrorCode.InvalidData           ->
-        | ErrorCode.NotInitialized        ->
-        | ErrorCode.NotCalibrated         ->
+        | ErrorCode.NotInitialized        -> "The PicoHarp has not been initilised."
+        | ErrorCode.NotCalibrated         -> "The PcioHarp has not been calibrated."
         | ErrorCode.DmaFail               ->
         | ErrorCode.XtdeviceFail          ->
         | ErrorCode.FpgaconfFail          ->
         | ErrorCode.IfconfFail            ->
         | ErrorCode.FiforesetFail         ->
         | ErrorCode.StatusFail            ->
-        | ErrorCode.UsbGetdriververFail   ->
-        | ErrorCode.UsbDriververMismatch  ->
-        | ErrorCode.UsbGetifinfoFail      ->
-        | ErrorCode.UsbHispeedFail        ->
+        | ErrorCode.UsbGetdriververFail   -> "Unable to retrieve the USB's driver version."
+        | ErrorCode.UsbDriververMismatch  -> 
+        | ErrorCode.UsbGetifinfoFail      -> "Unable to retrieve USB imformation."
+        | ErrorCode.UsbHispeedFail        -> 
         | ErrorCode.UsbVcmdFail           ->
         | ErrorCode.UsbBulkrdFail         ->
         | ErrorCode.HardwareF01           ->

@@ -34,7 +34,7 @@ module Model =
 
     /// Type volts with two available units. 
     type Voltage = 
-        | Voltage_mV of float
+        | Voltage_mV of float<mV>
         | Voltage_V of float<V>
 
     [<AutoOpen>]

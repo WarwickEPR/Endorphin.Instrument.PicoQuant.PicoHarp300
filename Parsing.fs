@@ -55,7 +55,8 @@ module internal Parsing =
         | resolution                      -> failwithf "Unexpected channel enum value: %A." resolution
 
     /// Converts type Rate into corresponding number.
-    let rateDividerEnum rate = function
+    let rateDividerEnum rate = 
+        match rate.RateDivider with
         | RateDivider_1 -> RateDividerEnum.RateDividerEnum_1 
         | RateDivider_2 -> RateDividerEnum.RateDividerEnum_2
         | RateDivider_4 -> RateDividerEnum.RateDividerEnum_4
