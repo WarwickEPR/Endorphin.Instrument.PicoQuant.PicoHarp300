@@ -8,6 +8,13 @@ open Endorphin.Core.StringUtils
 open ExtCore.Control
 
 module Quantities = 
+    
+    let durationSeconds = function
+        | Duration_ps duration -> Picoseconds.toSeconds duration 
+        | Duration_ns duration -> Nanoseconds.toSeconds duration
+        | Duration_us duration -> Microseconds.toSeconds duration
+        | Duration_ms duration -> Milliseconds.toSeconds duration
+        | Duration_s  duration -> duration
 
     let durationNanoSeconds = function
         | Duration_ps duration -> Picoseconds.toNanoseconds duration 

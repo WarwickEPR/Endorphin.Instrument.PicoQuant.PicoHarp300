@@ -32,7 +32,7 @@ module internal Parsing =
 
 
     /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
-    let resolutionEnum resolution = function        
+    let resolutionEnum = function        
         | Resolution_4ps   -> ResolutionEnum.Resolution_4ps
         | Resolution_8ps   -> ResolutionEnum.Resolution_8ps
         | Resolution_16ps  -> ResolutionEnum.Resolution_16ps
@@ -70,3 +70,5 @@ module internal Parsing =
         | RateDividerEnum.RateDividerEnum_8 -> RateDivider_8
         | ratedivider                       -> failwithf "Unexpected rate division: %A." ratedivider
         
+
+
