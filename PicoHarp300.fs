@@ -19,22 +19,23 @@ module internal PicoHarp =
     let private log = log4net.LogManager.GetLogger "PicoHarp 300"
     
     /// Logs the PicoHarp.
-    let logDevice (picoHarp : PicoHarp300) message =
+    let internal logDevice (picoHarp : PicoHarp300) message =
         sprintf "[%A] %s" picoHarp message |> log.Info
 
     /// Logs a success or failure message based on result of function. 
-    let logQueryResult successMessageFunc failureMessageFunc input =
+    let internal logQueryResult successMessageFunc failureMessageFunc input =
         match input with
         | Success value -> successMessageFunc value |> log.Debug
         | Failure error -> failureMessageFunc error |> log.Error
+        input 
         
     /// Logs a success or failure message based on result of function using the PicoHarp's index.
-    let logDeviceQueryResult (picoHarp : PicoHarp300) successMessageFunc failureMessageFunc =
+    let internal logDeviceQueryResult (picoHarp : PicoHarp300) successMessageFunc failureMessageFunc =
         logQueryResult 
             (fun value -> sprintf "[%A] %s" picoHarp (successMessageFunc value))
             (fun error -> sprintf "[%A] %s" picoHarp (failureMessageFunc error))
 
-    let logDeviceOpResult picoScope successMessage = logDeviceQueryResult picoScope (fun _ -> successMessage)
+    let internal logDeviceOpResult picoHarp300 successMessage = logDeviceQueryResult picoHarp300 (fun _ -> successMessage)
     
     /// The device index. 
     let private index (PicoHarp300 h) = h
@@ -44,59 +45,69 @@ module internal PicoHarp =
         /// Opens the PicoHarp.
         let openDevice picoHarp300 = 
             let serial = StringBuilder (8)
+            logDevice picoHarp300 "Opening device."
             NativeApi.OpenDevice (index picoHarp300, serial) 
             |> checkStatus 
             |> logQueryResult 
                 (sprintf "Successfully opened the PicoHarp: %A.")
-                (sprintf "Failed to open the PicoHarp: %A.")  
-        
+                (sprintf "Failed to open the PicoHarp: %A.")
+            |> AsyncChoice.liftChoice
+
         /// Calibrates the PicoHarp. 
         let calibrate picoHarp300 = 
+            logDevice picoHarp300 "Calibrating device."
             NativeApi.Calibrate (index picoHarp300)
             |> checkStatus
-            |> logDeviceQueryResult picoHarp300 
-                (sprintf "Successfully calibrated the device, %A: %A." picoHarp300)
-                (sprintf "Failed to calibrate the device, %A: %A." picoHarp300)
+            |> logDeviceOpResult picoHarp300  
+                ("Successfully calibrated the device.")
+                (sprintf "Failed to calibrate the device: %s." )
+            |> AsyncChoice.liftChoice
 
         /// Sets the PicoHarps mode.
         let initialiseMode picoHarp300 mode = 
+            logDevice picoHarp300 "Setting device mode."
             NativeApi.InitialiseMode (index picoHarp300 , mode)
             |> checkStatus
             |> logDeviceQueryResult picoHarp300
                 (sprintf "Successfully set the device (%A) mode to %A: %A." picoHarp300 mode)
                 (sprintf "Successfully set the device (%A) mode to %A: %A." picoHarp300 mode)
-             
+            |> AsyncChoice.liftChoice
 
         /// Closes the PicoHarp.
         let closeDevice picoHarp300 =
+            logDevice picoHarp300 "Closing device."
             NativeApi.CloseDevice (index picoHarp300)
             |> checkStatus
             |> logQueryResult 
                 (sprintf "Successfully closed the PicoHarp: %A.")
                 (sprintf "Failed to close the PicoHarp: %A.")  
-         
-
+            |> AsyncChoice.liftChoice 
+                    
     module Information = 
             
         /// Returns the PicoHarp's serial number.
         let GetSerialNumber picoHarp300 = 
             let serial = StringBuilder (8)
+            logDevice picoHarp300 "Retrieving device serial number."
             NativeApi.GetSerialNumber (index picoHarp300 , serial)
             |> checkStatus
             |> logDeviceQueryResult picoHarp300
                 (sprintf "Successfully retrieved the device (%A) serial number, %A: %A." picoHarp300 serial)
                 (sprintf "Failed to retrieve the device (%A) serial number, %A: %A." picoHarp300 serial)
-       
+            |> AsyncChoice.liftChoice
+
         /// Returens the PicoHarp's model number, part number ans version.
         let private hardwareInformation picoHarp300 = 
             let model   = StringBuilder (16)
             let partnum = StringBuilder (8)
             let vers    = StringBuilder (8)
+            logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
             NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers)
             |> checkStatus 
             |> logDeviceQueryResult picoHarp300
                 (sprintf "Successfully retrieved the device (%A) hardware information: %A" picoHarp300)
                 (sprintf "Failed to retrieve the device (%A) hardware information: %A" picoHarp300)
+            |> AsyncChoice.liftChoice
 
         /// Logs PicoHarp's model number. 
         let model picoHarp300 = 
@@ -113,11 +124,13 @@ module internal PicoHarp =
         /// Returns the histogram base resolution (the PicoHarp needs to be in histogram mode for function to return a success)
         let getBaseResolution picoHarp300 = 
             let mutable resolution : double = Unchecked.defaultof<_>
+            logDevice picoHarp300 "Retrieving device base resolution."
             NativeApi.GetResolution(index picoHarp300 , &resolution) 
             |> checkStatus
             |> logDeviceQueryResult picoHarp300
                 (sprintf "Successfully retrieved the device (%A) base resolution, %A: %A" picoHarp300 resolution)
                 (sprintf "Failed to retrieve the device (%A) base resolution, %A: %A" picoHarp300 resolution)
+            |> AsyncChoice.liftChoice
 
         /// Returns the features of the PicoHarp as a bit pattern.
         /// let getFeatures picoHarp300 = 
@@ -129,28 +142,32 @@ module internal PicoHarp =
             
         /// Sets the rate divider of the sync channel.
         let setSyncDiv picoHarp300 (sync:SyncParameters) = 
-            let divider = rateDividerEnum sync            
+            let divider = rateDividerEnum sync       
+            logDevice picoHarp300 "Setting the sync channel divider."     
             NativeApi.SetSyncDiv (index picoHarp300, divider)
             |> checkStatus 
             |> logDeviceQueryResult picoHarp300
                 (sprintf "Successfully set the device (%A) sync channel divider, %A: %A" picoHarp300 divider)
                 (sprintf "Failed to set the device (%A) sync channel divider %A: %A" picoHarp300 divider)
-            
+            |> AsyncChoice.liftChoice
+
         /// Sets the offset of the sync/channel 0.
         let SetSyncOffset picoHarp300 (sync:SyncParameters) = 
             let delay = Quantities.durationNanoSeconds (sync.Delay)
+            logDevice picoHarp300 "Setting the sync channel offset.."
             NativeApi.SetSyncDelay (index picoHarp300, int(delay))
             |> checkStatus
             |> logDeviceQueryResult picoHarp300
                 (sprintf "Successfully set the device (%A) sync offset, %A: %A" picoHarp300 (int(delay)) )
                 (sprintf "Failed to set the device (%A) sync offset, %A: %A" picoHarp300 (int(delay)) )
+            |> AsyncChoice.liftChoice
 
     module CFD = 
         
         /// Checks if the values for discriminator level and the zerocross are inside their respective ranges. 
         let private rangeCFD (cfd:CFD) = 
-            let level = Quantities.voltageMilliVolts (cfd.DiscriminatorLevel) 
-            let cross = Quantities.voltageMilliVolts (cfd.ZeroCross)
+            let level = Quantities.voltageMillivolts (cfd.DiscriminatorLevel) 
+            let cross = Quantities.voltageMillivolts (cfd.ZeroCross)
             if (level < 0.0<mV> || level < -800.0<mV>) then
                 1
             elif (cross < 0.0<mV> || cross > 20.0<mV>) then 
@@ -161,26 +178,27 @@ module internal PicoHarp =
         /// Logs CFD errors with log level warn.
         let private rangeErrorCodes picoHarp300 code = 
             if code = 1 then
-                log.Warn (sprintf "Failed to initialise the CFD, discriminator level is outside of the range -800mV to 0mV.")
+                log.Warn ("Failed to initialise the CFD, discriminator level is outside of the range -800mV to 0mV.")
             else
-                log.Warn (sprintf "Failed to initialise the CFD, zerocross is outside to the range 20mV to 0mV")
+                log.Warn ("Failed to initialise the CFD, zerocross is outside to the range 20mV to 0mV")
 
         /// Takes type of CFD and converts elements into integers then passes to the function PH_SetInputCFD.
         /// This sets the discriminator level and zero cross for the CFD in channels 1 or 2. 
         let initialiseCFD picoHarp300 (cfd:CFD) = 
             let channel =   channelEnum (cfd.InputChannel)
-            let level   =   Quantities.voltageMilliVolts (cfd.DiscriminatorLevel) 
-            let cross   =   Quantities.voltageMilliVolts (cfd.ZeroCross)
-            if rangeCFD cfd <> 0 then 
+            let level   =   Quantities.voltageMillivolts (cfd.DiscriminatorLevel) 
+            let cross   =   Quantities.voltageMillivolts (cfd.ZeroCross)
+            if  rangeCFD cfd <> 0 then 
                 rangeCFD cfd
-                |> rangeErrorCodes
+                |> rangeErrorCodes picoHarp300
+                |> AsyncChoice.liftChoice
             else 
+                logDevice picoHarp300 "Initialising the channel's CFD."
                 NativeApi.SetInputCFD (index picoHarp300, channel, int(level), int(cross))
                 |> checkStatus 
-                |> logDeviceQueryResult picoHarp300 
-                    (sprintf "Successfully initialised channel %A's CFD for device %A : %A" channel picoHarp300 )
+                |> logQueryResult  
+                    (sprintf "Successfully initialised channel %A's CFD for device %A: %A" channel picoHarp300 )
                     (sprintf "Failed to initialis channel %A's CFD for device %A: %A" channel picoHarp300 )
-
-               
-        
+                |> AsyncChoice.liftChoice
+           
 

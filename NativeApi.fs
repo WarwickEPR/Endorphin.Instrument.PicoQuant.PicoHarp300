@@ -79,19 +79,19 @@ module internal NativeApi =
     extern ErrorCode ClearHistMem (int devidx, int block);
 
     [<DllImport(dllName, EntryPoint = "PH_StartMeas")>]
-    /// Starts taking measurments. 
-    extern ErrorCode StartMeasurment (int devidx, int tacq);
+    /// Starts taking Measurements. 
+    extern ErrorCode StartMeasurement (int devidx, int tacq);
 
     [<DllImport(dllName, EntryPoint = "PH_StopMeas")>]
-    /// Stops measurments. 
-    extern ErrorCode StopMeasurment (int devidx);
+    /// Stops Measurements. 
+    extern ErrorCode StopMeasurement (int devidx);
     
     [<DllImport(dllName, EntryPoint = "PH_GetElapsedMeasTime")>]
     /// Closes the PicoHarp. 
     extern ErrorCode GetElapsedMeasTime (int devidx, [<Out>] double& elasped);
     
     [<DllImport(dllName, EntryPoint = "PH_CTCStatus")>]
-    /// Checks if measurments have been taken or are still being taken.
+    /// Checks if Measurements have been taken or are still being taken.
     extern ErrorCode CTCStatus (int devidx, [<Out>] int& ctcstatus);
     
     [<DllImport(dllName, EntryPoint = "PH_GetHistogram")>]

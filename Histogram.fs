@@ -16,98 +16,115 @@ module Histogram =
     module initalise  = 
      
         /// Sets the overflow limit on or off for the histogram bins.
-        let private stopOverflow deviceIndex (histogram : HistogramParameters) = 
+        let private stopOverflow picoHarp300 (histogram : HistogramParameters) = 
             /// Sets cap on number of counts per bin, minimum cap is 1 and maximum is 65535.      
             match histogram.Overflow with
             /// If overflow is turned on then check if limit is inside allowed range and then write to PicoHarp.
-            | On limit -> if (limit < 65535 && limit > 0) then 
-                              SetStopOverflow (deviceIndex, 0, limit)
-                          else failwithf "Invalid count limit, must be between 1 and 65535"
+            | Some limit -> if (limit < 65535 && limit > 0) then 
+                                PicoHarp.logDevice picoHarp300 "Setting histogram channel count limit"  
+                                NativeApi.SetStopOverflow (index picoHarp300, 0, limit)
+                                |> PicoHarp.checkStatus
+                                |> PicoHarp.logDeviceQueryResult picoHarp300
+                                    ("Successfully set limit for number of counts per histogram channel.")
+                                    (sprintf "Failed to set limit for counts per histogram channel: %A")
+                                |> AsyncChoice.liftChoice
+                            else failwithf "Invalid count limit, must be between 1 and 65535"
             /// If overflow is switched off then set limit to the maximum and turn off.
-            | Off -> SetStopOverflow (deviceIndex, 1, 65535)
+            | None ->           PicoHarp.logDevice picoHarp300 "Setting histogram channel count limit to maximum: 65535"
+                                SetStopOverflow (index picoHarp300, 1, 65535)
+                                |> PicoHarp.checkStatus
+                                |> PicoHarp.logDeviceQueryResult picoHarp300
+                                    ("Successfully set limit for number of counts per histogram channel to maximum: 65535.")
+                                    (sprintf "Failed to set limit for counts per histogram channel to maximum: %A")
+                                |> AsyncChoice.liftChoice
 
         /// Sets the bin resolution for the histogram.
         let private setBinning picoHarp300 (histogram : HistogramParameters) = 
             let binning = resolutionEnum (histogram.Resolution)
+            PicoHarp.logDevice picoHarp300 "Setting histogram bin resolution."
             NativeApi.SetBinning (index picoHarp300, binning)
             |> PicoHarp.checkStatus 
             |> PicoHarp.logQueryResult 
                 (sprintf "Successfully set histogram binning resolution to %A: %A" binning) 
                 (sprintf "Failed to set histogram binning resolution to %A: %A" binning)
+            |> AsyncChoice.liftChoice 
             
-        /// Starts histogram mode measurments, requires an acquisition time aka the period of time to take measurments over.
-        let private startMeasurments picoHarp300 (histogram : HistogramParameters) = 
+        /// Starts histogram mode Measurements, requires an acquisition time aka the period of time to take Measurements over.
+        let private startMeasurements picoHarp300 (histogram : HistogramParameters) = 
             let acquisitionTime = Quantities.durationSeconds (histogram.AcquisitionTime)
-            NativeApi.StartMeasurment (index picoHarp300 , int (acquisitionTime)) 
+            PicoHarp.logDevice picoHarp300 "Setting acquisition time and starting Measurements."
+            NativeApi.StartMeasurement (index picoHarp300 , int (acquisitionTime)) 
             |> PicoHarp.checkStatus
             |> PicoHarp.logQueryResult
-                (sprintf "Successfully set histogram acquisition time to %A: %A" acquisitionTime) 
-                (sprintf "Failed to set histogram binning resolution %A: %A" acquisitionTime)
+                (sprintf "Successfully set histogram acquisition time %A and started Measurements: %A" acquisitionTime) 
+                (sprintf "Failed to start %A: %A" acquisitionTime)
+            |> AsyncChoice.liftChoice
 
-        /// Stops histogram mode measurments. 
-        let private endMeasurments picoHarp300 = 
-            NativeApi.StopMeasurment (index picoHarp300)
+        /// Stops histogram mode Measurements. 
+        let private endMeasurements picoHarp300 = 
+            PicoHarp.logDevice picoHarp300 "Ending Measurements."
+            NativeApi.StopMeasurement (index picoHarp300)
             |> PicoHarp.checkStatus
             |> PicoHarp.logDeviceQueryResult picoHarp300
                 (sprintf "Successfully closed device (%A): %A" picoHarp300)
                 (sprintf "Failed to close device (%A): %A" picoHarp300)
+            |> AsyncChoice.liftChoice
             
         /// Writes histogram data into the array histogramData.
         /// The argument block will always be zero unless routing is used. 
         let private getHistogram picoHarp300 (histogramData:int[]) (block:int)  = 
-            NativeApi.GetHistogram (index picoHarp300, histogramData, block)
+            PicoHarp.logDevice picoHarp300 "Writing histogram data from device to an external array."
+            GetHistogram (index picoHarp300, histogramData, block)
             |> PicoHarp.checkStatus
             |> PicoHarp.logDeviceQueryResult picoHarp300
                 (sprintf "Successfully retrieved histogram data from device (%A): %A" picoHarp300)
                 (sprintf "Failed to retrieve histogram data from device (%A): (%A)" picoHarp300) 
+            |> AsyncChoice.liftChoice 
 
         ///Clears the histogram from picoHarps memory
         /// The argument block will always be zero unless routing is used. 
         let private clearmemory picoHarp300 block = 
+            PicoHarp.logDevice picoHarp300 "Clearing histogram data from device memory."
             NativeApi.ClearHistMem (index picoHarp300, block)
             |> PicoHarp.checkStatus
             |> PicoHarp.logDeviceQueryResult picoHarp300
                 (sprintf "Cleared histogram data in block %A from device (%A) memory: %A" block picoHarp300)
                 (sprintf "Failed to clear histogram data in block %A from device (%A) memory: %A" block picoHarp300)
+            |> AsyncChoice.liftChoice
         
-        
-        /// Ties together functions needed to take a single measurment 
-        let measurmentSingle deviceIndex (histogram : HistogramParameters) (array : int[]) = asyncChoice{ 
-            let! clear = clearmemory deviceIndex 0 
-            let! bin = setBinning 0 histogram
-            let! overflow = stopOverflow 0 histogram
-            let! start = startMeasurments deviceIndex histogram  
-            let! endMeasurment = endMeasurments deviceIndex
-            let! histogram = getHistogram deviceIndex array 0
+        /// Ties together functions needed to take a single measurement 
+        let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = asyncChoice{ 
+            let! clear     = clearmemory picoHarp300 0 
+            let! bin       = setBinning picoHarp300 histogram
+            let! overflow  = stopOverflow picoHarp300 histogram
+            let! startMeas = startMeasurements picoHarp300 histogram  
+            let! endMeas   = endMeasurements picoHarp300
+            let! histogram = getHistogram picoHarp300 array 0
             return histogram}
-
-        /// Calculates the total counts measured by summing the histogram channels.
-        let countTotal (pinnedArray: int []) =  Array.sum pinnedArray
-
-
-
-
-
-
-        
-
-      
-
-
+    
     module query =
        
         /// Returns time period over which experiment was running. 
-        let getMeasurmentTime deviceIndex = asyncChoice{
+        let getMeasurementTime picoHarp300 =
             let mutable elasped : double = Unchecked.defaultof<_>
-            let time =  GetElapsedMeasTime (deviceIndex, &elasped) 
-            return time}
-           
-        /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
-        let getCTCStatus deviceIndex = asyncChoice{
-            let mutable ctcStatus : int = Unchecked.defaultof<_>
-            let success = CTCStatus (deviceIndex, &ctcStatus)
-            return success}
+            PicoHarp.logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
+            NativeApi.GetElapsedMeasTime (index picoHarp300, &elasped) 
+            |> PicoHarp.checkStatus
+            |> PicoHarp.logQueryResult 
+                (sprintf "Successfully retrieved measurement time, %A: %A" elasped)
+                (sprintf "Failed to retrieve measurement time: %A") 
+            |> AsyncChoice.liftChoice
 
+        /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
+        let getCTCStatus picoHarp300 = 
+            let mutable ctcStatus : int = Unchecked.defaultof<_>
+            PicoHarp.logDevice picoHarp300 "Checking CTC status" 
+            NativeApi.CTCStatus (index picoHarp300, &ctcStatus)   
+            |> PicoHarp.checkStatus
+            |> PicoHarp.logQueryResult 
+                (sprintf "Successfully retrieved CTC status, %A: %A" ctcStatus)
+                (sprintf "Failed to retrieve CTC status: %A") 
+            |> AsyncChoice.liftChoice
 
 
   

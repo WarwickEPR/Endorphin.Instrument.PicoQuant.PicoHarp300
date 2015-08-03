@@ -57,50 +57,50 @@ module internal Error =
         | ErrorCode.NoError               -> "No Error"
         | ErrorCode.DeviceOpenFail        -> "PicoHarp has failed to open."
         | ErrorCode.DeviceBusy            -> "The PicoHarp is busy."
-        | ErrorCode.DeviceHeventFail      -> 
-        | ErrorCode.DeviceCallbsetFail    ->
-        | ErrorCode.DeviceBarmapFail      ->
+        | ErrorCode.DeviceHeventFail      -> ""
+        | ErrorCode.DeviceCallbsetFail    -> ""
+        | ErrorCode.DeviceBarmapFail      -> ""
         | ErrorCode.DeviceCloseFail       -> "Unable to close the PicoHarp."
         | ErrorCode.DeviceResetFail       -> "Unable to reset the PicoHarp."
         | ErrorCode.DeviceGetversionFail  -> "Unable to retrieve the PicoHarp's version"
-        | ErrorCode.DeviceVersionMismatch -> 
+        | ErrorCode.DeviceVersionMismatch ->  ""
         | ErrorCode.DeviceNotOpen         -> "The PicoHarp has not been opened."
         | ErrorCode.DeviceLocked          -> "The PicoHarp is locked."
-        | ErrorCode.InstanceRunning       ->
+        | ErrorCode.InstanceRunning       -> ""
         | ErrorCode.InvalidArgument       -> "Invaild argument."
         | ErrorCode.InvalidMode           -> "Invalid mode, possible modes: Histogram, T2, T3."
         | ErrorCode.InvalidOption         -> "Invalid option."
-        | ErrorCode.InvalidMemory         -> 
-        | ErrorCode.InvalidData           ->
+        | ErrorCode.InvalidMemory         -> ""
+        | ErrorCode.InvalidData           -> ""
         | ErrorCode.NotInitialized        -> "The PicoHarp has not been initilised."
         | ErrorCode.NotCalibrated         -> "The PcioHarp has not been calibrated."
-        | ErrorCode.DmaFail               ->
-        | ErrorCode.XtdeviceFail          ->
-        | ErrorCode.FpgaconfFail          ->
-        | ErrorCode.IfconfFail            ->
-        | ErrorCode.FiforesetFail         ->
-        | ErrorCode.StatusFail            ->
+        | ErrorCode.DmaFail               -> ""
+        | ErrorCode.XtdeviceFail          -> ""
+        | ErrorCode.FpgaconfFail          -> ""
+        | ErrorCode.IfconfFail            -> ""
+        | ErrorCode.FiforesetFail         -> ""
+        | ErrorCode.StatusFail            -> ""
         | ErrorCode.UsbGetdriververFail   -> "Unable to retrieve the USB's driver version."
-        | ErrorCode.UsbDriververMismatch  -> 
+        | ErrorCode.UsbDriververMismatch  -> ""
         | ErrorCode.UsbGetifinfoFail      -> "Unable to retrieve USB imformation."
-        | ErrorCode.UsbHispeedFail        -> 
-        | ErrorCode.UsbVcmdFail           ->
-        | ErrorCode.UsbBulkrdFail         ->
-        | ErrorCode.HardwareF01           ->
-        | ErrorCode.HardwareF02           ->
-        | ErrorCode.HardwareF03           ->
-        | ErrorCode.HardwareF04           ->
-        | ErrorCode.HardwareF05           ->
-        | ErrorCode.HardwareF06           ->
-        | ErrorCode.HardwareF07           ->
-        | ErrorCode.HardwareF08           ->
-        | ErrorCode.HardwareF09           ->
-        | ErrorCode.HardwareF10           ->
-        | ErrorCode.HardwareF11           ->
-        | ErrorCode.HardwareF12           ->
-        | ErrorCode.HardwareF13           ->
-        | ErrorCode.HardwareF14           ->
-        | ErrorCode.HardwareF15           ->
+        | ErrorCode.UsbHispeedFail        -> "" 
+        | ErrorCode.UsbVcmdFail           -> ""
+        | ErrorCode.UsbBulkrdFail         -> ""
+        | ErrorCode.HardwareF01           -> ""
+        | ErrorCode.HardwareF02           -> ""
+        | ErrorCode.HardwareF03           -> ""
+        | ErrorCode.HardwareF04           -> ""
+        | ErrorCode.HardwareF05           -> ""
+        | ErrorCode.HardwareF06           -> ""
+        | ErrorCode.HardwareF07           -> ""
+        | ErrorCode.HardwareF08           -> ""
+        | ErrorCode.HardwareF09           -> ""
+        | ErrorCode.HardwareF10           -> ""
+        | ErrorCode.HardwareF11           -> ""
+        | ErrorCode.HardwareF12           -> ""
+        | ErrorCode.HardwareF13           -> ""
+        | ErrorCode.HardwareF14           -> ""
+        | ErrorCode.HardwareF15           -> ""
         
     let (|Ok|Error|) = function
         | ErrorCode.NoError -> Ok  

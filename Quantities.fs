@@ -23,7 +23,7 @@ module Quantities =
         | Duration_ms duration -> Milliseconds.toNanoseconds duration
         | Duration_s  duration -> Seconds.toNanoseconds duration
 
-    let voltageMilliVolts = function
+    let voltageMillivolts = function
         | Voltage_mV voltage -> voltage
-        | Voltage_V voltage  -> Volts.toMilliVolts (voltage)
+        | Voltage_V voltage  -> Volts.toMillivolts (voltage)
 
