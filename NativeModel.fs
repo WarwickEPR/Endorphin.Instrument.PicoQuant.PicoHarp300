@@ -4,7 +4,7 @@
 module internal NativeModel =
 
     type ModeEnum =
-        | Histogram = 0
+        | Histogramming = 0
 
     type ChannelEnum =
         | Channel0 = 0

@@ -16,6 +16,13 @@ module Quantities =
         | Duration_ms duration -> Milliseconds.toSeconds duration
         | Duration_s  duration -> duration
 
+    let durationMilliSeconds = function
+        | Duration_ps duration -> Picoseconds.toMilliseconds duration 
+        | Duration_ns duration -> Nanoseconds.toMilliseconds duration
+        | Duration_us duration -> Microseconds.toMilliseconds duration
+        | Duration_ms duration -> duration
+        | Duration_s  duration -> Seconds.toMilliseconds duration
+
     let durationNanoSeconds = function
         | Duration_ps duration -> Picoseconds.toNanoseconds duration 
         | Duration_ns duration -> duration

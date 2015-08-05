@@ -53,34 +53,33 @@ module Model =
             
         ///Three possible modes, likley this programme will only deal with Histogramming.
         type Mode = 
-            | Histogram
+            | Histogramming
         
         /// Sets offset, only possible in modes Histogram and T3.
         type Offset = Offset of int option 
     
     ///Contains types relating to propeties of the histogram.    
-    [<AutoOpen>]
-    module Histogram =
         
-        ///Possible histogram bin widths.
-        type Resolution =  
-            | Resolution_4ps 
-            | Resolution_8ps 
-            | Resolution_16ps 
-            | Resolution_32ps 
-            | Resolution_64ps 
-            | Resolution_128ps 
-            | Resolution_256ps 
-            | Resolution_512ps                                                                               
-        
-        ///Histogram requires 3 parameters, number of bins, bin width and aquisition time. Always 65536 bins. 
-        type HistogramParameters = 
-            { Resolution      : Resolution
-              AcquisitionTime : Duration
-              Overflow        : int option }
-        
-        /// Channel 1 is used as a sync input for time resolved fluorescence with a pulsed exitation source.
-        /// For correlation experiments ignore the sync settings. 
+    ///Possible histogram bin widths.
+    type Resolution =  
+        | Resolution_4ps 
+        | Resolution_8ps 
+        | Resolution_16ps 
+        | Resolution_32ps 
+        | Resolution_64ps 
+        | Resolution_128ps 
+        | Resolution_256ps 
+        | Resolution_512ps                                                                               
+    
+    ///Histogram requires 3 parameters, number of bins, bin width and aquisition time. Always 65536 bins. 
+    type HistogramParameters = 
+        { Resolution      : Resolution
+          AcquisitionTime : Duration
+          Overflow        : int option }
+    
+    /// Channel 1 is used as a sync input for time resolved fluorescence with a pulsed exitation source.
+    /// For correlation experiments ignore the sync settings. 
+    
     [<AutoOpen>]
     module ChannelSync = 
         
