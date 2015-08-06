@@ -45,9 +45,8 @@ let experiment handle = asyncChoice {
     do! Histogram.clearmemory handle 0 
     do! Histogram.startMeasurements handle histogram
     /// Sleep for acquisition and then stop measurements.  
-    do! Histogram.waitToFinishMeasurement handle 1000
+    do! Histogram.waitToFinishMeasurement handle 100
     do! Histogram.endMeasurements handle     
-    do! Histogram.getHistogram handle array 0
     do! Histogram.getHistogram handle array 0
     let total = Array.sum array
     return total }
@@ -59,16 +58,15 @@ let countLine = new Event<int * int>()
 let chart = countLine.Publish |> LiveChart.FastLineIncremental
 
 /// Generates chart data. 
-let rec liveCounts (time:int) (x:int , y:int) handle = asyncChoice {
+let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
      let! count = experiment handle 
-     countLine.Trigger (x, y)
-     if time > 0 then
-        do! Async.Sleep 50 |> AsyncChoice.liftAsync
-        do! liveCounts  (time - 1) (time - 1, count) handle
+     countLine.Trigger (time, count)
+     if duration > 0 then
+        do! liveCounts  (duration - 1) (time + 1) handle
      else 
         do! PicoHarp.initialise.closeDevice handle }
 
-initialise handle |> Async.RunSynchronously
-liveCounts 10 (0 , 0) handle |> Async.RunSynchronously
-chart |> Chart.Show
 
+initialise handle |> Async.RunSynchronously
+liveCounts 10 0 handle |> Async.RunSynchronously
+chart |> Chart.Show

@@ -25,7 +25,7 @@ log4net.Config.BasicConfigurator.Configure()
 /// Contains histogram parameters. 
 let histogram = {
     Resolution      = Resolution_512ps;
-    AcquisitionTime = Duration_s 30.0<s>;
+    AcquisitionTime = Duration_s 5.0<s>;
     Overflow        = None;
     }
 
@@ -44,13 +44,11 @@ let initialise handle = asyncChoice{
 
 /// Runs the experiment and returns total histogram counts. 
 let experiment handle = asyncChoice{ 
-    let array = Array.create 65535 1
-    do! Histogram.clearmemory handle 0 
-    printfn "Hello1"
+    let array = Array.create 65535 0
+    do! Histogram.clearmemory handle 0   
     do! Histogram.startMeasurements handle histogram
     /// Sleep for acquisition and then stop measurements.  
     do! Histogram.waitToFinishMeasurement handle 1000
-    printfn "Hello2" 
     do! Histogram.endMeasurements handle     
     do! Histogram.getHistogram handle array 0
     let sum = Array.sum array
