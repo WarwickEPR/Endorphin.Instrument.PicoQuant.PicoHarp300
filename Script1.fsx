@@ -5,7 +5,7 @@
 #r "NationalInstruments.VisaNS.dll"
 #r "FSharp.PowerPack.dll"
 #r "bin/Debug/PicoHarp300.dll"
-#r "../packages/FSharp.Charting.0.90.9/lib/net40/FSharp.Charting.dll"
+#r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "System.Windows.Forms.DataVisualization.dll"
 
 open System
@@ -28,8 +28,6 @@ let histogram = {
     Overflow        = None;
     }
 
-/// List to store counts per histogram. 
-/// let counts = []
 /// Finds the device index of the PicoHarp. 
 let handle = PicoHarp.initialise.picoHarp "1020854"
 
@@ -66,8 +64,11 @@ let rec liveCounts (time:int) (x:int , y:int) handle = asyncChoice {
      countLine.Trigger (x, y)
      if time > 0 then
         do! Async.Sleep 50 |> AsyncChoice.liftAsync
-        do! liveCounts  (time - 1) (time - 1, count) handle} 
+        do! liveCounts  (time - 1) (time - 1, count) handle
+     else 
+        do! PicoHarp.initialise.closeDevice handle }
 
 initialise handle |> Async.RunSynchronously
-liveCounts 100 (0 , 0) handle |> Async.RunSynchronously
-chart |> Chart.Show 
+liveCounts 10 (0 , 0) handle |> Async.RunSynchronously
+chart |> Chart.Show
+
