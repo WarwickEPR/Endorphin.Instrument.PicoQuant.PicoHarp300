@@ -18,7 +18,7 @@ open Endorphin.Instrument.PicoHarp300
 
 /// Contains histogram parameters.
 let histogram = {
-    Resolution      = Resolution_4ps;
+    Resolution      = Resolution_512ps;
     AcquisitionTime = Duration_s 1.0<s>;
     Overflow        = None;
     }
@@ -39,10 +39,23 @@ let experiment handle = asyncChoice{
     let array = Array.create 65535 0
     do! Histogram.clearmemory handle 0 
     do! Histogram.startMeasurements handle histogram
+    /// Recursive, checks every second.1
+    do! Histogram.waitToFinishMeasurement handle 1000
     /// Sleep for acquisition and then stop measurements.  
     let sleep = Async.Sleep(10000) 
     let! endMeasurement = Histogram.endMeasurements handle     
     return endMeasurement}
+
+let rec liveCounts duration (array:int []) handle = 
+    if duration = 0 then 
+         array
+    else 
+        let countData = Array.create 65535 0
+        do experiment handle 
+        do Histogram.getHistogram handle countData 0 
+        let total = Array.map2 (fun x y -> x + y) array countData
+        liveCounts (duration - 1) total handle 
+    
 
 /// Collects many histograms and adds all their counts to get total count rate over the acquisition time.
 let rec intergrationMeasurement iterations (array:int[]) handle = 

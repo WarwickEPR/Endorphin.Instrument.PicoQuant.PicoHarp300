@@ -36,6 +36,10 @@
     <Reference Include="ExtCore">
       <HintPath>..\Endorphin.Core\bin\Debug\ExtCore.dll</HintPath>
     </Reference>
+    <Reference Include="FSharp.Charting.Gtk">
+      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\FSharp.Charting.Gtk.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FSharp.PowerPack">
       <HintPath>fsharp.powerpack.dll</HintPath>
     </Reference>
@@ -46,6 +50,14 @@
     </Reference>
     <Reference Include="NationalInstruments.Common.Native">
       <HintPath>..\Endorphin.Core\bin\Debug\NationalInstruments.Common.Native.dll</HintPath>
+    </Reference>
+    <Reference Include="OxyPlot">
+      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OxyPlot.GtkSharp">
+      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.GtkSharp.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -63,6 +75,9 @@
     <None Include="OpenDevice.fsx" />
     <None Include="HistogramMeasurement.fsx" />
     <None Include="Integration.fsx" />
+    <None Include="ChartingTest.fsx" />
+    <None Include="Script1.fsx" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">

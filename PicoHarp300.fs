@@ -71,8 +71,8 @@ module PicoHarp =
             logDevice picoHarp300 "Opening device."
             NativeApi.OpenDevice (index picoHarp300, serial) 
             |> checkStatus 
-            |> logQueryResult 
-                (sprintf "Successfully opened the PicoHarp: %A.")
+            |> logDeviceOpResult picoHarp300 
+                ("Successfully opened the PicoHarp.")
                 (sprintf "Failed to open the PicoHarp: %A.")
             |> AsyncChoice.liftChoice
 
@@ -92,9 +92,9 @@ module PicoHarp =
             logDevice picoHarp300 "Setting device mode."
             NativeApi.InitialiseMode (index picoHarp300 , modeCode)
             |> checkStatus
-            |> logDeviceQueryResult picoHarp300
-                (sprintf "Successfully set the device (%A) mode to %A: %A." picoHarp300 mode)
-                (sprintf "Successfully set the device (%A) mode to %A: %A." picoHarp300 mode)
+            |> logDeviceOpResult picoHarp300
+                ("Successfully set the device mode.")
+                (sprintf "Failed to set the device mode: %A.")
             |> AsyncChoice.liftChoice
 
         /// Closes the PicoHarp.
@@ -102,8 +102,8 @@ module PicoHarp =
             logDevice picoHarp300 "Closing device."
             NativeApi.CloseDevice (index picoHarp300)
             |> checkStatus
-            |> logQueryResult 
-                (sprintf "Successfully closed the PicoHarp: %A.")
+            |> logDeviceOpResult picoHarp300
+                ("Successfully closed the PicoHarp.")
                 (sprintf "Failed to close the PicoHarp: %A.")  
             |> AsyncChoice.liftChoice 
                     
@@ -115,9 +115,9 @@ module PicoHarp =
             logDevice picoHarp300 "Retrieving device serial number."
             NativeApi.GetSerialNumber (index picoHarp300 , serial)
             |> checkStatus
-            |> logDeviceQueryResult picoHarp300
-                (sprintf "Successfully retrieved the device (%A) serial number, %A: %A." picoHarp300 serial)
-                (sprintf "Failed to retrieve the device (%A) serial number, %A: %A." picoHarp300 serial)
+            |> logDeviceOpResult picoHarp300
+                ("Successfully retrieved the device (%A) serial number.")
+                (sprintf "Failed to retrieve the device serial number: %A.")
             |> AsyncChoice.liftChoice
 
         /// Returens the PicoHarp's model number, part number ans version.
@@ -128,9 +128,9 @@ module PicoHarp =
             logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
             NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers)
             |> checkStatus 
-            |> logDeviceQueryResult picoHarp300
-                (sprintf "Successfully retrieved the device (%A) hardware information: %A" picoHarp300)
-                (sprintf "Failed to retrieve the device (%A) hardware information: %A" picoHarp300)
+            |> logDeviceOpResult picoHarp300
+                ("Successfully retrieved the device (%A) hardware information." )
+                (sprintf "Failed to retrieve the device hardware information: %A")
             |> AsyncChoice.liftChoice
 
         /// Logs PicoHarp's model number. 
@@ -151,9 +151,9 @@ module PicoHarp =
             logDevice picoHarp300 "Retrieving device base resolution."
             NativeApi.GetResolution(index picoHarp300 , &resolution) 
             |> checkStatus
-            |> logDeviceQueryResult picoHarp300
-                (sprintf "Successfully retrieved the device (%A) base resolution, %A: %A" picoHarp300 resolution)
-                (sprintf "Failed to retrieve the device (%A) base resolution, %A: %A" picoHarp300 resolution)
+            |> logDeviceOpResult picoHarp300
+                ("Successfully retrieved the device base resolution.")
+                (sprintf "Failed to retrieve the device base resolution: %A")
             |> AsyncChoice.liftChoice
         
     module SyncChannel = 
@@ -164,20 +164,20 @@ module PicoHarp =
             logDevice picoHarp300 "Setting the sync channel divider."     
             NativeApi.SetSyncDiv (index picoHarp300, divider)
             |> checkStatus 
-            |> logDeviceQueryResult picoHarp300
-                (sprintf "Successfully set the device (%A) sync channel divider, %A: %A" picoHarp300 divider)
-                (sprintf "Failed to set the device (%A) sync channel divider %A: %A" picoHarp300 divider)
+            |> logDeviceOpResult picoHarp300
+                ("Successfully set the device sync channel divider.")
+                (sprintf "Failed to set the device sync channel divider: %A")
             |> AsyncChoice.liftChoice
 
         /// Sets the offset of the sync/channel 0.
         let SetSyncOffset picoHarp300 (sync:SyncParameters) = 
             let delay = Quantities.durationNanoSeconds (sync.Delay)
-            logDevice picoHarp300 "Setting the sync channel offset.."
+            logDevice picoHarp300 "Setting the sync channel offset."
             NativeApi.SetSyncDelay (index picoHarp300, int(delay))
             |> checkStatus
-            |> logDeviceQueryResult picoHarp300
-                (sprintf "Successfully set the device (%A) sync offset, %A: %A" picoHarp300 (int(delay)) )
-                (sprintf "Failed to set the device (%A) sync offset, %A: %A" picoHarp300 (int(delay)) )
+            |> logDeviceOpResult picoHarp300
+                (sprintf "Successfully set the device sync offset.")
+                (sprintf "Failed to set the device sync offset: %A")
             |> AsyncChoice.liftChoice
 
     module CFD = 
@@ -209,9 +209,9 @@ module PicoHarp =
             logDevice picoHarp300 "Initialising the channel's CFD."
             NativeApi.SetInputCFD (index picoHarp300, channel, int(level), int(cross))
             |> checkStatus 
-            |> logQueryResult  
-                (sprintf "Successfully initialised channel %A's CFD for device %A: %A" channel picoHarp300 )
-                (sprintf "Failed to initialis channel %A's CFD for device %A: %A" channel picoHarp300 )
+            |> logDeviceOpResult picoHarp300
+                ("Successfully initialised channel's CFD.")
+                (sprintf "Failed to initialis channel's CFD: %A")
             |> AsyncChoice.liftChoice
            
            
