@@ -5,6 +5,8 @@
 #r "NationalInstruments.VisaNS.dll"
 #r "FSharp.PowerPack.dll"
 #r "bin/Debug/PicoHarp300.dll"
+#r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
+#r "System.Windows.Forms.DataVisualization.dll"
 
 open Microsoft.FSharp.NativeInterop
 open System.Runtime.InteropServices
@@ -15,6 +17,7 @@ open Endorphin.Core.NationalInstruments
 open Endorphin.Core.StringUtils
 open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300
+open FSharp.Charting
 
 /// Contains histogram parameters.
 let histogram = {
@@ -43,45 +46,29 @@ let experiment handle = asyncChoice{
     do! Histogram.waitToFinishMeasurement handle 1000
     /// Sleep for acquisition and then stop measurements.  
     let sleep = Async.Sleep(10000) 
-    let! endMeasurement = Histogram.endMeasurements handle     
-    return endMeasurement}
+    do! Histogram.endMeasurements handle
+    do! Histogram.getHistogram handle array 0      
+    return array}
 
-let rec liveCounts duration (array:int []) handle = 
-    if duration = 0 then 
-         array
-    else 
+/// Takes data and adds to the array total
+let rec liveCounts duration (array:int []) handle = asyncChoice{
+    if duration > 0 then 
         let countData = Array.create 65535 0
-        do experiment handle 
-        do Histogram.getHistogram handle countData 0 
+        let! array = experiment handle 
         let total = Array.map2 (fun x y -> x + y) array countData
-        liveCounts (duration - 1) total handle 
-    
+        do! liveCounts (duration - 1) total handle 
+    else 
+        do! PicoHarp.initialise.closeDevice handle }
+       
+/// Event for chart.
+let countLine = new Event<int * int>()
 
-/// Collects many histograms and adds all their counts to get total count rate over the acquisition time.
-let rec intergrationMeasurement iterations (array:int[]) handle = 
-      if iterations = 0 then
-           array
-      else 
-          /// Runs experiment.
-          do experiment handle |> ignore  
-          /// Creates an array
-          let arrayData = Array.create 65535 0
-          /// Writes data to the array.
-          do Histogram.getHistogram handle (arrayData) (0) |> ignore
-          /// Sums the data array with the master array to get a running count.   
-          let total = Array.map2 (fun x y -> x + y) arrayData array
-          intergrationMeasurement (iterations - 1) array handle  
+/// Live charts a line chart.
+let chart = countLine.Publish |> LiveChart.FastLineIncremental
 
-/// Determines number of histograms to be collected and runs the experiment.
-let integrationMode (time:float<s>) = 
-    /// Creates an array to store total count data in.
-    let totalArray = Array.create 65535 0
-    /// Calculates number of histograms that can be acquired within the acquisition time. 
-    let iterationsFloat = (Quantities.durationSeconds(histogram.AcquisitionTime))/time
-    /// Converts iterationsFloat to an int.
-    let iterationsInt = int(iterationsFloat)
-    /// Takes measurements.
-    intergrationMeasurement iterationsInt totalArray
+initialise handle |> Async.RunSynchronously
+
+chart |> Chart.Show
 
          
 

@@ -24,7 +24,7 @@ log4net.Config.BasicConfigurator.Configure()
 /// Contains histogram parameters. 
 let histogram = {
     Resolution      = Resolution_512ps;
-    AcquisitionTime = Duration_s 30.0<s>;
+    AcquisitionTime = Duration_s 1.0<s>;
     Overflow        = None;
     }
 
