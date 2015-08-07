@@ -16,7 +16,6 @@ let chart = randomWalk.Publish |> LiveChart.FastLineIncremental
 let chart2 =  randomWalk2.Publish |> LiveChart.FastLineIncremental
 let chart3 =  randomWalk3.Publish |> LiveChart.FastLineIncremental
 
-
 let rec generateWalk3 (x, y) count = async {
      randomWalk2.Trigger (x, y)
      if count > 0 then
