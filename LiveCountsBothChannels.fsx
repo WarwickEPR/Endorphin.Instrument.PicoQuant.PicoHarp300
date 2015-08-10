@@ -35,26 +35,49 @@ let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let uiContext = SynchronizationContext.Current
 
 
-let showChart channel_0 channel_1 = async {
+let showChart channel_0 channel_1 (channel:InputChannel) = async {
     
-    do! Async.SwitchToContext uiContext // add the chart to the form using the UI thread context
-    
-    let chart =    
-        Chart.Combine [
-            channel_0
-            |> Observable.observeOn uiContext
-            |> LiveChart.FastLineIncremental
-            
-            channel_1
-            |> Observable.observeOn uiContext
-            |> LiveChart.FastLineIncremental ]
-        |> Chart.WithXAxis(Title = "Time")
-        |> Chart.WithYAxis(Title = "Counts")
-    
-    new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
-    |> form.Controls.Add
-    
+    if channel = Both then
+        do! Async.SwitchToContext uiContext // add the chart to the form using the UI thread context
+        
+        let chart3 =    
+            Chart.Combine [
+                channel_0
+                |> Observable.observeOn uiContext
+                |> LiveChart.FastLineIncremental
+                
+                channel_1
+                |> Observable.observeOn uiContext
+                |> LiveChart.FastLineIncremental ]
+            |> Chart.WithXAxis(Title = "Time")
+            |> Chart.WithYAxis(Title = "Counts")
+        
+        new ChartTypes.ChartControl(chart3, Dock = DockStyle.Fill)
+        |> form.Controls.Add
+        
+    elif channel = Channel1 then
+        let chart1 = channel_1
+                     |> Observable.observeOn uiContext
+                     |> LiveChart.FastLineIncremental 
+                     |> Chart.WithXAxis(Title = "Time")
+                     |> Chart.WithYAxis(Title = "Counts")
+        
+        new ChartTypes.ChartControl(chart1, Dock = DockStyle.Fill)
+        |> form.Controls.Add
+        
+    elif channel = Channel0 then
+        let chart2 = channel_0
+                     |> Observable.observeOn uiContext
+                     |> LiveChart.FastLineIncremental 
+                     |> Chart.WithXAxis(Title = "Time")
+                     |> Chart.WithYAxis(Title = "Counts")
+        
+        new ChartTypes.ChartControl(chart2, Dock = DockStyle.Fill)
+        |> form.Controls.Add
+    else
+        failwithf "Invalid channel: %A" channel
     do! Async.SwitchToThreadPool()} 
+        
 
 /// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
 let initialise handle = asyncChoice{  
@@ -76,15 +99,15 @@ let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
      channelOneEvent.Trigger (time, channel_1)
      let publish_0 = channelZeroEvent.Publish
      let publish_1 = channelOneEvent.Publish
-     do! showChart publish_0 publish_1 |> AsyncChoice.liftAsync
+     do! showChart publish_0 publish_1 Both |> AsyncChoice.liftAsync
      if duration > 0 then
-        do! Async.Sleep 100 |> AsyncChoice.liftAsync
+        do! Async.Sleep 500 |> AsyncChoice.liftAsync
         do! liveCounts  (duration - 1) (time + 1) handle
      else 
         do! PicoHarp.initialise.closeDevice handle }
 
 initialise handle |> Async.RunSynchronously
-Async.StartWithContinuations(liveCounts 30 0 handle , printfn "%A", ignore, ignore)
+Async.StartWithContinuations(liveCounts 100 0 handle , printfn "%A", ignore, ignore)
 
 
 
