@@ -88,12 +88,23 @@ module Histogram =
         PicoHarp.logDevice picoHarp300 "Writing histogram data from device to an external array."
         GetHistogram (PicoHarp.index picoHarp300, histogramData, block)
         |> PicoHarp.checkStatus
-        |> PicoHarp.logDeviceQueryResult picoHarp300
-            (sprintf "Successfully retrieved histogram data from device: %A.")
+        |> PicoHarp.logDeviceOpResult picoHarp300
+            ("Successfully retrieved histogram data from device.")
             (sprintf "Failed to retrieve histogram data from device: %A.") 
         |> AsyncChoice.liftChoice 
+
+    /// Writes channel count rate to a mutable int.  
+    let getCountRate picoHarp300 (channel:int) =
+        let mutable rate : int = Unchecked.defaultof<_>
+        PicoHarp.logDevice picoHarp300 "Retrieving channel count rate."
+        GetCountRate (PicoHarp.index picoHarp300, channel, &rate)
+        |> PicoHarp.checkStatusAndReturn (rate)
+        |> PicoHarp.logDeviceOpResult picoHarp300
+            ("Successfully retrieved channel count rate.")
+            (sprintf "Failed to retrieve channel count rate: %A")
+        |> AsyncChoice.liftChoice
     
-    ///Clears the histogram from picoHarps memory
+    /// Clears the histogram from picoHarps memory
     /// The argument block will always be zero unless routing is used. 
     let clearmemory picoHarp300 block =    
         PicoHarp.logDevice picoHarp300 "Clearing histogram data from device memory."

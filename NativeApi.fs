@@ -99,6 +99,10 @@ module internal NativeApi =
     /// Writes histogram data to an empty array chcount. 
     extern ErrorCode GetHistogram (int devidx, int [] chcount, int clear);
     
+    [<DllImport(dllName, EntryPoint = "PH_GetCountRate")>]
+    /// Averages counts in channel over 100ms and returns a count rate. 
+    extern ErrorCode GetCountRate (int devidx, int channel, int& rate);
+
     [<DllImport(dllName, EntryPoint = "PH_GetFlags")>]
     
     extern ErrorCode GetFlags (int devidx, int* flags); 

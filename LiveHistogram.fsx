@@ -8,13 +8,12 @@
 #r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "System.Windows.Forms.DataVisualization.dll"
 
-open Microsoft.FSharp.NativeInterop
-open System.Runtime.InteropServices
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
+open System.Drawing
+open System.Threading
+open System.Windows.Forms
 open Endorphin.Core
-open Endorphin.Core.NationalInstruments
-open Endorphin.Core.StringUtils
 open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300
 open FSharp.Charting
@@ -29,7 +28,24 @@ let histogram = {
 /// Obtains the PicoHarp's device index. 
 let handle = PicoHarp.initialise.picoHarp "1020854"
 
-/// Initoalises the PicoHarp to histogramming mode, sets bin width and overflow limits.
+let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
+let uiContext = SynchronizationContext.Current
+
+let showChart data = async {
+    do! Async.SwitchToContext uiContext // add the chart to the form using the UI thread context
+    
+    let chart = data   
+                |> Observable.observeOn uiContext
+                |> LiveChart.Bar
+                |> Chart.WithXAxis(Title = "Time")
+                |> Chart.WithYAxis(Title = "Counts")
+
+    new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
+    |> form.Controls.Add
+    
+    do! Async.SwitchToThreadPool() } |> AsyncChoice.liftAsync
+
+/// Initialises the PicoHarp to histogramming mode, sets bin width and overflow limits.
 let initialise handle = asyncChoice{  
     let! opendev  = PicoHarp.initialise.openDevice handle   
     do! PicoHarp.initialise.initialiseMode handle Histogramming
@@ -55,25 +71,29 @@ let width = Quantities.resolutiontoWidth (histogram.Resolution)
 let xAxis = Array.init 65535 (fun i -> i*width) 
 
 /// Bar chart event. 
-let barData = new Event<int * int>()
+let barEvent = new Event<(int * int)[]>()
+
+/// Inital data, counts all zero.
+let initalData = Array.create 65535 0
 
 /// Takes data and adds to the array total
 let rec liveCounts duration (previousData:int[]) handle = asyncChoice{
-    if duration > 0 then 
-        /// The array returned by the PicoHarp containing count data.
-        let! picoHarpData = experiment handle 
-        /// Sums picoHarpData counts with previously obtained data.
-        let yAxis = Array.map2 (fun x y -> x + y) previousData picoHarpData
-        /// Combines xAxis and yAxis into an array of tuples.
-        let barChart = Array.map2 (fun x y -> (x,y)) xAxis yAxis
-        /// ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
-        
-
-        do! liveCounts (duration - 1) yAxis handle 
+    /// The array returned by the PicoHarp containing count data.
+    let! picoHarpData = experiment handle 
+    /// Sums picoHarpData counts with previously obtained data.
+    let yAxis = Array.map2 (fun x y -> x + y) previousData picoHarpData
+    /// Combines xAxis and yAxis into an array of tuples.
+    let barChart = Array.map2 (fun x y -> (x,y)) xAxis yAxis
+    barEvent.Trigger barChart
+    if duration > 0 then     
+        do! Async.Sleep 100 |> AsyncChoice.liftAsync
+        do! barEvent.Publish |> showChart 
+        do! liveCounts (duration - 1) yAxis handle
     else 
         do! PicoHarp.initialise.closeDevice handle }
 
 initialise handle |> Async.RunSynchronously
+Async.StartWithContinuations(liveCounts 10 initalData handle , printfn "%A", ignore, ignore)
 
 
 

@@ -34,19 +34,27 @@ let handle = PicoHarp.initialise.picoHarp "1020854"
 let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let uiContext = SynchronizationContext.Current
 
-let showChart data = async {
+
+let showChart channel_0 channel_1 = async {
+    
     do! Async.SwitchToContext uiContext // add the chart to the form using the UI thread context
     
-    let chart = data   
-                |> Observable.observeOn uiContext
-                |> LiveChart.FastLineIncremental
-                |> Chart.WithXAxis(Title = "Time")
-                |> Chart.WithYAxis(Title = "Counts")
-
+    let chart =    
+        Chart.Combine [
+            channel_0
+            |> Observable.observeOn uiContext
+            |> LiveChart.FastLineIncremental
+            
+            channel_1
+            |> Observable.observeOn uiContext
+            |> LiveChart.FastLineIncremental ]
+        |> Chart.WithXAxis(Title = "Time")
+        |> Chart.WithYAxis(Title = "Counts")
+    
     new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
     |> form.Controls.Add
     
-    do! Async.SwitchToThreadPool() } |> AsyncChoice.liftAsync
+    do! Async.SwitchToThreadPool()} 
 
 /// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
 let initialise handle = asyncChoice{  
@@ -56,26 +64,19 @@ let initialise handle = asyncChoice{
     do! Histogram.stopOverflow handle histogram
     return opendev}
 
-/// Runs the experiment and returns total histogram counts. 
-let experiment handle = asyncChoice {
-    let array = Array.create 65535 0
-    do! Histogram.clearmemory handle 0 
-    do! Histogram.startMeasurements handle histogram
-    /// Sleep for acquisition and then stop measurements.  
-    do! Histogram.waitToFinishMeasurement handle 1000
-    do! Histogram.endMeasurements handle     
-    do! Histogram.getHistogram handle array 0
-    let total = Array.sum array
-    return total }
-
-/// Event for chart.
-let countEvent = new Event<int * int>()
+/// Events for charting.
+let channelZeroEvent = new Event<int * int>()
+let channelOneEvent = new Event<int * int>()
 
 /// Generates chart data. 
 let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
-     let! count = experiment handle 
-     countEvent.Trigger (time, count)
-     do! countEvent.Publish |> showChart
+     let! channel_0 = Histogram.getCountRate handle 0
+     let! channel_1 = Histogram.getCountRate handle 1
+     channelZeroEvent.Trigger (time, channel_0)
+     channelOneEvent.Trigger (time, channel_1)
+     let publish_0 = channelZeroEvent.Publish
+     let publish_1 = channelOneEvent.Publish
+     do! showChart publish_0 publish_1 |> AsyncChoice.liftAsync
      if duration > 0 then
         do! Async.Sleep 100 |> AsyncChoice.liftAsync
         do! liveCounts  (duration - 1) (time + 1) handle
@@ -83,7 +84,7 @@ let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
         do! PicoHarp.initialise.closeDevice handle }
 
 initialise handle |> Async.RunSynchronously
-Async.StartWithContinuations(liveCounts 10 0 handle , printfn "%A", ignore, ignore)
+Async.StartWithContinuations(liveCounts 30 0 handle , printfn "%A", ignore, ignore)
 
 
 

@@ -78,6 +78,7 @@
     <None Include="LiveHistogram.fsx" />
     <None Include="Test.fsx" />
     <None Include="Script1.fsx" />
+    <None Include="LiveCountsBothChannels.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">
