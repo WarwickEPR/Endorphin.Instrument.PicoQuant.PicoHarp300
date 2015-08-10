@@ -34,9 +34,8 @@ let handle = PicoHarp.initialise.picoHarp "1020854"
 let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let uiContext = SynchronizationContext.Current
 
-
 let showChart channel_0 channel_1 (channel:InputChannel) = async {
-    
+    // Charts both channel one and channel two count rates.  
     if channel = Both then
         do! Async.SwitchToContext uiContext // add the chart to the form using the UI thread context
         
@@ -54,7 +53,7 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
         
         new ChartTypes.ChartControl(chart3, Dock = DockStyle.Fill)
         |> form.Controls.Add
-        
+    // Charts channel one's count rate. 
     elif channel = Channel1 then
         let chart1 = channel_1
                      |> Observable.observeOn uiContext
@@ -64,7 +63,7 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
         
         new ChartTypes.ChartControl(chart1, Dock = DockStyle.Fill)
         |> form.Controls.Add
-        
+    // Charts channel two's count rate.
     elif channel = Channel0 then
         let chart2 = channel_0
                      |> Observable.observeOn uiContext
@@ -93,10 +92,13 @@ let channelOneEvent = new Event<int * int>()
 
 /// Generates chart data. 
 let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
+     // let! statments retrievethe count rates for channel one and channel two. 
      let! channel_0 = Histogram.getCountRate handle 0
      let! channel_1 = Histogram.getCountRate handle 1
+     // Trigger both channels events. 
      channelZeroEvent.Trigger (time, channel_0)
      channelOneEvent.Trigger (time, channel_1)
+     // let statments publish both channels events. 
      let publish_0 = channelZeroEvent.Publish
      let publish_1 = channelOneEvent.Publish
      do! showChart publish_0 publish_1 Both |> AsyncChoice.liftAsync
