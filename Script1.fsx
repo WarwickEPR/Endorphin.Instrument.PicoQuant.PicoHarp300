@@ -36,6 +36,7 @@ let showChart data = async {
                 |> Chart.WithXAxis(Title = "Time")
                 |> Chart.WithYAxis(Title = "Counts")
 
+
     new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
     |> form.Controls.Add
     
@@ -48,45 +49,21 @@ let histogram = {
     Overflow        = None;
     }
 
-/// Finds the device index of the PicoHarp. 
-let handle = PicoHarp.initialise.picoHarp "1020854"
-
-/// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
-let initialise handle = asyncChoice{  
-    let! opendev  = PicoHarp.initialise.openDevice handle   
-    do! PicoHarp.initialise.initialiseMode handle Histogramming
-    do! Histogram.setBinning handle histogram
-    do! Histogram.stopOverflow handle histogram
-    return opendev}
-
 /// Runs the experiment and returns total histogram counts. 
-let experiment handle = asyncChoice {
-    let array = Array.create 65535 0
-    do! Histogram.clearmemory handle 0 
-    do! Histogram.startMeasurements handle histogram
-    /// Sleep for acquisition and then stop measurements.  
-    do! Histogram.waitToFinishMeasurement handle 100
-    do! Histogram.endMeasurements handle     
-    do! Histogram.getHistogram handle array 0
+let experiment number = 
+    let array = Array.create 65535 number
     let total = Array.sum array
-    return total }
+    total 
  
 /// Generates chart data. 
-let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
-     let! count = experiment handle 
+let rec liveCounts (duration:int) (time:int) = asyncChoice {
      if duration > 0 then
-        do! liveCounts  (duration - 1) (time + 1) handle
+        let count = experiment duration 
         countEvent.Trigger (time, count)
-        do! countEvent.Publish |> showChart 
-     else 
-        do! PicoHarp.initialise.closeDevice handle }
+        do! countEvent.Publish |> showChart
+        do! liveCounts  (duration - 1) (time + 1)}  
 
-initialise handle |> Async.RunSynchronously
-liveCounts 10 0 handle |> Async.RunSynchronously
-
-
-
-
+liveCounts 10 0 |> Async.RunSynchronously
 
 
 

@@ -34,3 +34,12 @@ module Quantities =
         | Voltage_mV voltage -> voltage
         | Voltage_V voltage  -> Volts.toMillivolts (voltage)
 
+    let resolutiontoWidth = function        
+        | Resolution_4ps   -> 4
+        | Resolution_8ps   -> 8
+        | Resolution_16ps  -> 16
+        | Resolution_32ps  -> 32
+        | Resolution_64ps  -> 64
+        | Resolution_128ps -> 128
+        | Resolution_256ps -> 256
+        | Resolution_512ps -> 512

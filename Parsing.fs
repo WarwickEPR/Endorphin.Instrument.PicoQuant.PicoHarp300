@@ -30,7 +30,7 @@ module internal Parsing =
         | ChannelEnum.Channel1 -> Channel1
         | channel              -> failwithf "Unexpected channel enum value: %A." channel
 
-
+    
     /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
     let resolutionEnum = function        
         | Resolution_4ps   -> ResolutionEnum.Resolution_4ps

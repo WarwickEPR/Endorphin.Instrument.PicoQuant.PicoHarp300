@@ -72,12 +72,12 @@
     <Compile Include="Quantities.fs" />
     <Compile Include="PicoHarp300.fs" />
     <Compile Include="Histogram.fs" />
-    <None Include="OpenDevice.fsx" />
     <None Include="HistogramMeasurement.fsx" />
-    <None Include="Integration.fsx" />
-    <None Include="ChartingTest.fsx" />
-    <None Include="Script1.fsx" />
     <None Include="packages.config" />
+    <None Include="LiveCounts.fsx" />
+    <None Include="LiveHistogram.fsx" />
+    <None Include="Test.fsx" />
+    <None Include="Script1.fsx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">

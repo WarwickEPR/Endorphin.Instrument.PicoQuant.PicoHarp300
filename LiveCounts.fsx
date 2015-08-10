@@ -31,6 +31,23 @@ let histogram = {
 /// Finds the device index of the PicoHarp. 
 let handle = PicoHarp.initialise.picoHarp "1020854"
 
+let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
+let uiContext = SynchronizationContext.Current
+
+let showChart data = async {
+    do! Async.SwitchToContext uiContext // add the chart to the form using the UI thread context
+    
+    let chart = data   
+                |> Observable.observeOn uiContext
+                |> LiveChart.FastLineIncremental
+                |> Chart.WithXAxis(Title = "Time")
+                |> Chart.WithYAxis(Title = "Counts")
+
+    new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
+    |> form.Controls.Add
+    
+    do! Async.SwitchToThreadPool() } |> AsyncChoice.liftAsync
+
 /// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
 let initialise handle = asyncChoice{  
     let! opendev  = PicoHarp.initialise.openDevice handle   
@@ -52,21 +69,19 @@ let experiment handle = asyncChoice {
     return total }
 
 /// Event for chart.
-let countLine = new Event<int * int>()
-
-/// Live charts a line chart.
-let chart = countLine.Publish |> LiveChart.FastLineIncremental
+let countEvent = new Event<int * int>()
 
 /// Generates chart data. 
 let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
      let! count = experiment handle 
-     countLine.Trigger (time, count)
+     countEvent.Trigger (time, count)
+     do! countEvent.Publish |> showChart
      if duration > 0 then
+        do! Async.Sleep 1000 |> AsyncChoice.liftAsync
         do! liveCounts  (duration - 1) (time + 1) handle
      else 
         do! PicoHarp.initialise.closeDevice handle }
 
-
 initialise handle |> Async.RunSynchronously
 liveCounts 10 0 handle |> Async.RunSynchronously
-chart |> Chart.Show
+

@@ -19,13 +19,20 @@ open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300
 open FSharp.Charting
 
-
 log4net.Config.BasicConfigurator.Configure()
+
+/// Contains histogram parameters. 
+let histogram = {
+    Resolution      = Resolution_512ps;
+    AcquisitionTime = Duration_s 1.0<s>;
+    Overflow        = None;
+    }
+
+/// Finds the device index of the PicoHarp. 
+let handle = PicoHarp.initialise.picoHarp "1020854"
 
 let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let uiContext = SynchronizationContext.Current
-
-let countEvent = new Event<int*int>()
 
 let showChart data = async {
     do! Async.SwitchToContext uiContext // add the chart to the form using the UI thread context
@@ -40,16 +47,6 @@ let showChart data = async {
     |> form.Controls.Add
     
     do! Async.SwitchToThreadPool() } |> AsyncChoice.liftAsync
-
-/// Contains histogram parameters. 
-let histogram = {
-    Resolution      = Resolution_512ps;
-    AcquisitionTime = Duration_s 1.0<s>;
-    Overflow        = None;
-    }
-
-/// Finds the device index of the PicoHarp. 
-let handle = PicoHarp.initialise.picoHarp "1020854"
 
 /// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
 let initialise handle = asyncChoice{  
@@ -70,23 +67,20 @@ let experiment handle = asyncChoice {
     do! Histogram.getHistogram handle array 0
     let total = Array.sum array
     return total }
- 
+
+/// Event for chart.
+let countEvent = new Event<int * int>()
+
 /// Generates chart data. 
 let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
      let! count = experiment handle 
+     countEvent.Trigger (time, count)
+     do! countEvent.Publish |> showChart
      if duration > 0 then
         do! liveCounts  (duration - 1) (time + 1) handle
-        countEvent.Trigger (time, count)
-        do! countEvent.Publish |> showChart 
      else 
         do! PicoHarp.initialise.closeDevice handle }
 
 initialise handle |> Async.RunSynchronously
 liveCounts 10 0 handle |> Async.RunSynchronously
-
-
-
-
-
-
 

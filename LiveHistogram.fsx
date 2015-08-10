@@ -37,38 +37,45 @@ let initialise handle = asyncChoice{
     do! Histogram.stopOverflow handle histogram
     return opendev}
 
-/// Runs the experiment.
+/// Runs the experiment and returns total histogram counts. 
 let experiment handle = asyncChoice{ 
     let array = Array.create 65535 0
-    do! Histogram.clearmemory handle 0 
+    do! Histogram.clearmemory handle 0   
     do! Histogram.startMeasurements handle histogram
-    /// Recursive, checks every second.1
-    do! Histogram.waitToFinishMeasurement handle 1000
     /// Sleep for acquisition and then stop measurements.  
-    let sleep = Async.Sleep(10000) 
-    do! Histogram.endMeasurements handle
-    do! Histogram.getHistogram handle array 0      
+    do! Histogram.waitToFinishMeasurement handle 1000
+    do! Histogram.endMeasurements handle     
+    do! Histogram.getHistogram handle array 0
     return array}
 
+/// Converts type Resolution into type int.
+let width = Quantities.resolutiontoWidth (histogram.Resolution) 
+
+/// Array containing values for bar chart x axis.  
+let xAxis = Array.init 65535 (fun i -> i*width) 
+
+/// Bar chart event. 
+let barData = new Event<int * int>()
+
 /// Takes data and adds to the array total
-let rec liveCounts duration (array:int []) handle = asyncChoice{
+let rec liveCounts duration (previousData:int[]) handle = asyncChoice{
     if duration > 0 then 
-        let countData = Array.create 65535 0
-        let! array = experiment handle 
-        let total = Array.map2 (fun x y -> x + y) array countData
-        do! liveCounts (duration - 1) total handle 
+        /// The array returned by the PicoHarp containing count data.
+        let! picoHarpData = experiment handle 
+        /// Sums picoHarpData counts with previously obtained data.
+        let yAxis = Array.map2 (fun x y -> x + y) previousData picoHarpData
+        /// Combines xAxis and yAxis into an array of tuples.
+        let barChart = Array.map2 (fun x y -> (x,y)) xAxis yAxis
+        /// ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+        
+
+        do! liveCounts (duration - 1) yAxis handle 
     else 
         do! PicoHarp.initialise.closeDevice handle }
-       
-/// Event for chart.
-let countLine = new Event<int * int>()
-
-/// Live charts a line chart.
-let chart = countLine.Publish |> LiveChart.FastLineIncremental
 
 initialise handle |> Async.RunSynchronously
 
-chart |> Chart.Show
+
 
          
 
