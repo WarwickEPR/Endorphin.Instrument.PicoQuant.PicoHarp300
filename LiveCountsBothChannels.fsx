@@ -1,12 +1,10 @@
-﻿#r @"..\packages\log4net.2.0.3\lib\net40-full\log4net.dll"
-#r @"..\packages\ExtCore.0.8.45\lib\net45\ExtCore.dll"
-#r @"..\Endorphin.Core\bin\Debug\Endorphin.Core.dll"
-#r "NationalInstruments.Common.dll"
-#r "NationalInstruments.VisaNS.dll"
-#r "FSharp.PowerPack.dll"
-#r "bin/Debug/PicoHarp300.dll"
+﻿#r "System.Windows.Forms.DataVisualization.dll"
+#r "../packages/ExtCore.0.8.45/lib/net45/ExtCore.dll"
 #r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
-#r "System.Windows.Forms.DataVisualization.dll"
+#r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
+#r "../packages/log4net.2.0.3/lib/net40-full/log4net.dll"
+#r "../Endorphin.Core/bin/Debug/Endorphin.Core.dll"
+#r "bin/Debug/PicoHarp300.dll"
 
 open System
 open System.Drawing
@@ -18,6 +16,7 @@ open Endorphin.Core
 open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300
 open FSharp.Charting
+open FSharp.Control.Reactive
 
 log4net.Config.BasicConfigurator.Configure()
 
@@ -42,12 +41,16 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
         let chart3 =    
             Chart.Combine [
                 channel_0
-                |> Observable.observeOn uiContext
-                |> LiveChart.FastLineIncremental
+                |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
+                |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                |> Observable.observeOnContext uiContext
+                |> LiveChart.FastLine
 
                 channel_1
-                |> Observable.observeOn uiContext
-                |> LiveChart.FastLineIncremental ]
+                |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
+                |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                |> Observable.observeOnContext uiContext
+                |> LiveChart.FastLine ]
             |> Chart.WithXAxis(Title = "Time")
             |> Chart.WithYAxis(Title = "Counts")
         
@@ -56,8 +59,10 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
     // Charts channel one's count rate. 
     elif channel = Channel1 then
         let chart1 = channel_1
-                     |> Observable.observeOn uiContext
-                     |> LiveChart.FastLineIncremental 
+                     |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
+                     |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                     |> Observable.observeOnContext uiContext
+                     |> LiveChart.FastLine
                      |> Chart.WithXAxis(Title = "Time")
                      |> Chart.WithYAxis(Title = "Count Rate")
         
@@ -66,8 +71,10 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
     // Charts channel two's count rate.
     elif channel = Channel0 then
         let chart2 = channel_0
-                     |> Observable.observeOn uiContext
-                     |> LiveChart.FastLineIncremental 
+                     |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
+                     |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                     |> Observable.observeOnContext uiContext
+                     |> LiveChart.FastLine
                      |> Chart.WithXAxis(Title = "Time")
                      |> Chart.WithYAxis(Title = "Counts")
         
@@ -87,8 +94,8 @@ let initialise handle = asyncChoice{
     return opendev}
 
 /// Events for charting.
-let channelZeroEvent = new Event<int * int>()
-let channelOneEvent = new Event<int * int>()
+let channelZeroEvent = new Event<int >()
+let channelOneEvent = new Event<int>()
 
 /// Generates chart data. 
 let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
@@ -96,8 +103,8 @@ let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
      let! channel_0 = Histogram.getCountRate handle 0
      let! channel_1 = Histogram.getCountRate handle 1
      // Trigger both channels events. 
-     channelZeroEvent.Trigger (time, channel_0)
-     channelOneEvent.Trigger (time, channel_1)
+     channelZeroEvent.Trigger channel_0
+     channelOneEvent.Trigger  channel_1
      // let statments publish both channels events. 
      let publish_0 = channelZeroEvent.Publish
      let publish_1 = channelOneEvent.Publish

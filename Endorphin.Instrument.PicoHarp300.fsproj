@@ -9,9 +9,10 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Library1</RootNamespace>
     <AssemblyName>PicoHarp300</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Endorphin.Instrument.PicoHarp300</Name>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -36,27 +37,9 @@
     <Reference Include="ExtCore">
       <HintPath>..\Endorphin.Core\bin\Debug\ExtCore.dll</HintPath>
     </Reference>
-    <Reference Include="FSharp.Charting.Gtk">
-      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\FSharp.Charting.Gtk.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FSharp.PowerPack">
-      <HintPath>fsharp.powerpack.dll</HintPath>
-    </Reference>
     <Reference Include="log4net" />
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="NationalInstruments.Common.Native">
-      <HintPath>..\Endorphin.Core\bin\Debug\NationalInstruments.Common.Native.dll</HintPath>
-    </Reference>
-    <Reference Include="OxyPlot">
-      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="OxyPlot.GtkSharp">
-      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.GtkSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -73,12 +56,12 @@
     <Compile Include="PicoHarp300.fs" />
     <Compile Include="Histogram.fs" />
     <None Include="HistogramMeasurement.fsx" />
-    <None Include="packages.config" />
     <None Include="LiveCounts.fsx" />
     <None Include="LiveHistogram.fsx" />
     <None Include="Test.fsx" />
     <None Include="Script1.fsx" />
     <None Include="LiveCountsBothChannels.fsx" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Endorphin.Core\Endorphin.Core.fsproj">

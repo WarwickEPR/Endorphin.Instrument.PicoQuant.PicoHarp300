@@ -52,8 +52,7 @@ module internal Error =
         | HardwareF14           = -77
         | HardwareF15           = -78
 
-    let errorMessage = 
-        function
+    let errorMessage = function
         | ErrorCode.NoError               -> "No Error"
         | ErrorCode.DeviceOpenFail        -> "PicoHarp has failed to open."
         | ErrorCode.DeviceBusy            -> "The PicoHarp is busy."
@@ -101,6 +100,7 @@ module internal Error =
         | ErrorCode.HardwareF13           -> ""
         | ErrorCode.HardwareF14           -> ""
         | ErrorCode.HardwareF15           -> ""
+        | errorCode                       -> failwithf "Unexpected error code enum value: %A." errorCode
         
     let (|Ok|Error|) = function
         | ErrorCode.NoError -> Ok  
