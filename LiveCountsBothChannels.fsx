@@ -31,7 +31,7 @@ let histogram = {
 /// Finds the device index of the PicoHarp. 
 let handle = PicoHarp.initialise.picoHarp "1020854"
 
-let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
+let form = new Form(Visible = true, TopMost = true, Width = 20, Height = 600)
 let uiContext = SynchronizationContext.Current
 
 let showChart channel_0 channel_1 (channel:InputChannel) = async {
@@ -44,7 +44,7 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
                 channel_0
                 |> Observable.observeOn uiContext
                 |> LiveChart.FastLineIncremental
-                
+
                 channel_1
                 |> Observable.observeOn uiContext
                 |> LiveChart.FastLineIncremental ]
@@ -59,7 +59,7 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
                      |> Observable.observeOn uiContext
                      |> LiveChart.FastLineIncremental 
                      |> Chart.WithXAxis(Title = "Time")
-                     |> Chart.WithYAxis(Title = "Counts")
+                     |> Chart.WithYAxis(Title = "Count Rate")
         
         new ChartTypes.ChartControl(chart1, Dock = DockStyle.Fill)
         |> form.Controls.Add
