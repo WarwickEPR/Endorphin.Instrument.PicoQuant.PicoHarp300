@@ -1,24 +1,31 @@
 ﻿#r "System.Windows.Forms.DataVisualization.dll"
 #r "../packages/ExtCore.0.8.45/lib/net45/ExtCore.dll"
-#r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
-#r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
 #r "../packages/log4net.2.0.3/lib/net40-full/log4net.dll"
+#r @"..\packages\Rx-Core.2.2.5\lib\net45\System.Reactive.Core.dll"
+#r @"..\packages\Rx-Interfaces.2.2.5\lib\net45\System.Reactive.Interfaces.dll"
+#r @"..\packages\Rx-PlatformServices.2.2.5\lib\net45\System.Reactive.PlatformServices.dll"
+#r @"..\packages\Rx-Linq.2.2.5\lib\net45\System.Reactive.Linq.dll"
+#r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
+#r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "../Endorphin.Core/bin/Debug/Endorphin.Core.dll"
 #r "bin/Debug/PicoHarp300.dll"
 
-open System
+open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
+open System.Text
 open System.Drawing
 open System.Threading
+open System.Runtime
 open System.Windows.Forms
-open System.Text
-open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open Endorphin.Core
 open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300
 open FSharp.Charting
 open FSharp.Control.Reactive
+open System.Reactive.Linq
+open System.Reactive
+open System
 
-log4net.Config.BasicConfigurator.Configure()
+//log4net.Config.BasicConfigurator.Configure()
 
 /// Contains histogram parameters. 
 let histogram = {
@@ -29,6 +36,9 @@ let histogram = {
 
 /// Finds the device index of the PicoHarp. 
 let handle = PicoHarp.initialise.picoHarp "1020854"
+
+let refreshRate = 20.0
+let windowSize = 200
 
 let form = new Form(Visible = true, TopMost = true, Width = 20, Height = 600)
 let uiContext = SynchronizationContext.Current
@@ -41,14 +51,14 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
         let chart3 =    
             Chart.Combine [
                 channel_0
-                |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
-                |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                |> Observable.bufferMapiCountOverlapped windowSize (fun i x -> (i, x))
+                |> Observable.sample (TimeSpan.FromMilliseconds refreshRate)
                 |> Observable.observeOnContext uiContext
                 |> LiveChart.FastLine
 
                 channel_1
-                |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
-                |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                |> Observable.bufferMapiCountOverlapped windowSize (fun i x -> (i, x))
+                |> Observable.sample (TimeSpan.FromMilliseconds refreshRate)
                 |> Observable.observeOnContext uiContext
                 |> LiveChart.FastLine ]
             |> Chart.WithXAxis(Title = "Time")
@@ -59,8 +69,8 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
     // Charts channel one's count rate. 
     elif channel = Channel1 then
         let chart1 = channel_1
-                     |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
-                     |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                     |> Observable.bufferMapiCountOverlapped windowSize (fun i x -> (i, x))
+                     |> Observable.sample (TimeSpan.FromMilliseconds refreshRate)
                      |> Observable.observeOnContext uiContext
                      |> LiveChart.FastLine
                      |> Chart.WithXAxis(Title = "Time")
@@ -71,8 +81,8 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
     // Charts channel two's count rate.
     elif channel = Channel0 then
         let chart2 = channel_0
-                     |> Observable.bufferMapiCountOverlapped 200 (fun i x -> (i, x))
-                     |> Observable.sample (TimeSpan.FromMilliseconds 200.0)
+                     |> Observable.bufferMapiCountOverlapped windowSize (fun i x -> (i, x))
+                     |> Observable.sample (TimeSpan.FromMilliseconds refreshRate)
                      |> Observable.observeOnContext uiContext
                      |> LiveChart.FastLine
                      |> Chart.WithXAxis(Title = "Time")
@@ -105,18 +115,21 @@ let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
      // Trigger both channels events. 
      channelZeroEvent.Trigger channel_0
      channelOneEvent.Trigger  channel_1
-     // let statments publish both channels events. 
-     let publish_0 = channelZeroEvent.Publish
-     let publish_1 = channelOneEvent.Publish
-     do! showChart publish_0 publish_1 Both |> AsyncChoice.liftAsync
      if duration > 0 then
-        do! Async.Sleep 500 |> AsyncChoice.liftAsync
+        do! Async.Sleep 100 |> AsyncChoice.liftAsync
         do! liveCounts  (duration - 1) (time + 1) handle
      else 
         do! PicoHarp.initialise.closeDevice handle }
 
+let experiment duration handle = asyncChoice {
+     // let statments publish both channels events. 
+     let publish_0 = channelZeroEvent.Publish
+     let publish_1 = channelOneEvent.Publish
+     do! showChart publish_0 publish_1 Both |> AsyncChoice.liftAsync
+     do! liveCounts duration 0 handle }
+
 initialise handle |> Async.RunSynchronously
-Async.StartWithContinuations(liveCounts 100 0 handle , printfn "%A", ignore, ignore)
+Async.StartWithContinuations(experiment 10000000 handle , printfn "%A", ignore, ignore)
 
 
 

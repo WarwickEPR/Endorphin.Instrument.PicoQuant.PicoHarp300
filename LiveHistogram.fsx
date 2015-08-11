@@ -1,21 +1,29 @@
 ﻿#r "System.Windows.Forms.DataVisualization.dll"
 #r "../packages/ExtCore.0.8.45/lib/net45/ExtCore.dll"
 #r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
-#r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
 #r "../packages/log4net.2.0.3/lib/net40-full/log4net.dll"
 #r "../Endorphin.Core/bin/Debug/Endorphin.Core.dll"
 #r "bin/Debug/PicoHarp300.dll"
+#r @"..\packages\Rx-Core.2.2.5\lib\net45\System.Reactive.Core.dll"
+#r @"..\packages\Rx-Interfaces.2.2.5\lib\net45\System.Reactive.Interfaces.dll"
+#r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
+#r @"..\packages\Rx-PlatformServices.2.2.5\lib\net45\System.Reactive.PlatformServices.dll"
+#r @"..\packages\Rx-Linq.2.2.5\lib\net45\System.Reactive.Linq.dll"
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
 open System.Drawing
 open System.Threading
+open System.Runtime
 open System.Windows.Forms
 open Endorphin.Core
 open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300
 open FSharp.Charting
 open FSharp.Control.Reactive
+open System.Reactive.Linq
+open System.Reactive
+open System
 
 /// Contains histogram parameters.
 let histogram = {
@@ -38,7 +46,7 @@ let showChart data = async {
     
     let chart = data   
                 |> Observable.observeOnContext uiContext
-                |> LiveChart.Bar
+                |> LiveChart.FastLine
                 |> Chart.WithXAxis(Title = "Time")
                 |> Chart.WithYAxis(Title = "Counts")
 
@@ -56,7 +64,7 @@ let initialise handle = asyncChoice{
     return opendev}
 
 /// Runs the experiment and returns total histogram counts. 
-let experiment handle = asyncChoice{ 
+let measurement handle = asyncChoice{ 
     let array = Array.create 65536 0
     do! Histogram.clearmemory handle 0   
     do! Histogram.startMeasurements handle histogram
@@ -72,12 +80,7 @@ let width = Quantities.resolutiontoWidth (histogram.Resolution)
 /// Bar chart event. 
 let barEvent = new Event<(int * int)[]>()
 
-/// Inital data, counts all zero.
-let initalData = Array.create channelNumberof 0
-
 let storedArray = Array.create channelNumberof 0 
-
-
 
 // Finds if number is a multiple of factor. 
 let multipleof number factor = if int(number/factor)*factor = number then true
@@ -97,12 +100,10 @@ let rec private compressArray (array:int[]) (storedArray:int[]) (marker) =
     else 
         storedArray
 
-
-
 /// Takes data and adds to the array total
 let rec liveCounts duration (previousData:int[]) handle = asyncChoice{
     /// The array returned by the PicoHarp containing count data.
-    let! picoHarpData = experiment handle 
+    let! picoHarpData = measurement handle 
     let buffer = compressArray (picoHarpData) storedArray 0 
     /// Array containing values for bar chart x axis.  
     let xAxis = Array.init channelNumberof (fun i -> i*width*channelResolution) 
@@ -113,13 +114,18 @@ let rec liveCounts duration (previousData:int[]) handle = asyncChoice{
     barEvent.Trigger barChart
     if duration > 0 then     
         do! Async.Sleep 100 |> AsyncChoice.liftAsync
-        do! barEvent.Publish |> showChart  
         do! liveCounts (duration - 1) yAxis handle
     else 
         do! PicoHarp.initialise.closeDevice handle }
 
+let experiment duration handle = asyncChoice{
+    /// Inital data, counts all zero.
+    let initialData = Array.create channelNumberof 0
+    do! barEvent.Publish |> showChart
+    do! liveCounts duration initialData handle}  
+    
 initialise handle |> Async.RunSynchronously
-Async.StartWithContinuations(liveCounts 10 initalData handle , printfn "%A", ignore, ignore)
+Async.StartWithContinuations(experiment 10000 handle , printfn "%A", ignore, ignore)
 
 
 
