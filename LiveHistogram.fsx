@@ -82,17 +82,13 @@ let barEvent = new Event<(int * int)[]>()
 
 let storedArray = Array.create channelNumberof 0 
 
-// Finds if number is a multiple of factor. 
-let multipleof number factor = if int(number/factor)*factor = number then true
-                               else false    
-
 // Sums array elements in blocks of 64 to compress a 65536 element array into a 1024 elemnt array. 
 let rec private compressArray (array:int[]) (storedArray:int[]) (marker) =
     // Marker only needs to go up to 64. 
     if marker < channelResolution then
         // Leaves element marker and every 16th afterwards unchanged, sets all others to zero. 
         // Array.filter removes all zero elements. 
-        let buffer = Array.mapi (fun i elem -> if (multipleof (i - marker) channelResolution || i = marker) then elem else -1) array
+        let buffer = Array.mapi (fun i elem -> if ((i - marker) % channelResolution = 0 || i = marker) then elem else -1) array
                      |> Array.filter (fun elem -> elem <> -1)
         // sums buffer elements into stored data. 
         let newArray = Array.map2 (fun x y -> x + y) buffer storedArray
