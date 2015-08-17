@@ -111,9 +111,6 @@ module internal NativeApi =
     /// Closes the PicoHarp. 
     extern ErrorCode CloseDevice (int devidx);
     
-    
-    
-    
-    
-    
-    
+    [<DllImport(dllName, EntryPoint = "PH_ReadFiFo")>]
+    /// Read the TTTR mode buffer in a FIFO fashion
+    extern ErrorCode ReadFiFo(int devidx, int[] buffer, int count, [<Out>] int& nactual);
