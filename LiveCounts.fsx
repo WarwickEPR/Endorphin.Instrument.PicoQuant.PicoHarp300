@@ -7,6 +7,10 @@
 #r "bin/Debug/PicoHarp300.dll"
 #r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "System.Windows.Forms.DataVisualization.dll"
+#r "../packages/Rx-Core.2.2.5/lib/net45/System.Reactive.Core.dll"
+#r "../packages/Rx-Interfaces.2.2.5/lib/net45/System.Reactive.Interfaces.dll"
+#r "../packages/Rx-Linq.2.2.5/lib/net45/System.Reactive.Linq.dll"
+#r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
 
 open System
 open System.Drawing
@@ -18,6 +22,7 @@ open Endorphin.Core
 open ExtCore.Control
 open Endorphin.Instrument.PicoHarp300
 open FSharp.Charting
+//open FSharp.Control.Reactive
 
 log4net.Config.BasicConfigurator.Configure()
 
