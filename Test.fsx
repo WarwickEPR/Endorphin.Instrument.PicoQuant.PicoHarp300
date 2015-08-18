@@ -3,7 +3,7 @@
 #r @"..\Endorphin.Core\bin\Debug\Endorphin.Core.dll"
 #r "NationalInstruments.Common.dll"
 #r "NationalInstruments.VisaNS.dll"
-#r "FSharp.PowerPack.dll"
+#r "../packages/FSPowerPack.Core.Community.2.0.0.0/Lib/Net40/FSharp.PowerPack.dll"
 #r "bin/Debug/PicoHarp300.dll"
 #r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "System.Windows.Forms.DataVisualization.dll"

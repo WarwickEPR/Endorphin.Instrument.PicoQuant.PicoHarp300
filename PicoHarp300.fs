@@ -244,3 +244,15 @@ module PicoHarp =
                 (sprintf "Successfully retrieved CTC status: %A")
                 (sprintf "Failed to retrieve CTC status: %A") 
             |> AsyncChoice.liftChoice
+        
+        /// Writes channel count rate to a mutable int.  
+        let getCountRate picoHarp300 (channel:int) =
+            let mutable rate : int = Unchecked.defaultof<_>
+            logDevice picoHarp300 "Retrieving channel count rate."
+            GetCountRate (index picoHarp300, channel, &rate)
+            |> checkStatusAndReturn (rate)
+            |> logDeviceOpResult picoHarp300
+                ("Successfully retrieved channel count rate.")
+                (sprintf "Failed to retrieve channel count rate: %A")
+            |> AsyncChoice.liftChoice
+    

@@ -35,7 +35,7 @@ let histogram = {
     }
 
 /// Finds the device index of the PicoHarp. 
-let handle = PicoHarp.initialise.picoHarp "1020854"
+let handle = PicoHarp.Initialise.picoHarp "1020854"
 
 let refreshRate = 20.0
 let windowSize = 200
@@ -97,8 +97,8 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
 
 /// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
 let initialise handle = asyncChoice{  
-    let! opendev  = PicoHarp.initialise.openDevice handle   
-    do! PicoHarp.initialise.initialiseMode handle Histogramming
+    let! opendev  = PicoHarp.Initialise.openDevice handle   
+    do! PicoHarp.Initialise.initialiseMode handle Histogramming
     do! Histogram.setBinning handle histogram
     do! Histogram.stopOverflow handle histogram
     return opendev}
@@ -110,8 +110,8 @@ let channelOneEvent = new Event<int>()
 /// Generates chart data. 
 let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
      // let! statments retrievethe count rates for channel one and channel two. 
-     let! channel_0 = Histogram.getCountRate handle 0
-     let! channel_1 = Histogram.getCountRate handle 1
+     let! channel_0 = PicoHarp.Query.getCountRate handle 0
+     let! channel_1 = PicoHarp.Query.getCountRate handle 1
      // Trigger both channels events. 
      channelZeroEvent.Trigger channel_0
      channelOneEvent.Trigger  channel_1
@@ -119,7 +119,7 @@ let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
         do! Async.Sleep 100 |> AsyncChoice.liftAsync
         do! liveCounts  (duration - 1) (time + 1) handle
      else 
-        do! PicoHarp.initialise.closeDevice handle }
+        do! PicoHarp.Initialise.closeDevice handle }
 
 let experiment duration handle = asyncChoice {
      // let statments publish both channels events. 

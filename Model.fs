@@ -86,9 +86,14 @@ module Model =
     type HistogramParameters = 
         { Resolution      : Resolution
           AcquisitionTime : Duration
-          Overflow        : int option 
-          MarkerChannel   : MarkerChannel option}
-    
+          Overflow        : int option }
+      
+    /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
+    type TTTRHistogramParameters = 
+        { Resolution        : Resolution
+          AcquisitionTime   : Duration
+          MarkerChannel     : MarkerChannel }
+
     /// Channel 1 is used as a sync input for time resolved fluorescence with a pulsed exitation source.
     /// For correlation experiments ignore the sync settings. 
     

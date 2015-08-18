@@ -36,7 +36,7 @@ let channelNumberof = 512
 let channelResolution = 65536/channelNumberof
 
 /// Obtains the PicoHarp's device index. 
-let handle = PicoHarp.initialise.picoHarp "1020854"
+let handle = PicoHarp.Initialise.picoHarp "1020854"
 
 let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let uiContext = SynchronizationContext.Current
@@ -57,8 +57,8 @@ let showChart data = async {
 
 /// Initialises the PicoHarp to histogramming mode, sets bin width and overflow limits.
 let initialise handle = asyncChoice{  
-    let! opendev  = PicoHarp.initialise.openDevice handle   
-    do! PicoHarp.initialise.initialiseMode handle Histogramming
+    let! opendev  = PicoHarp.Initialise.openDevice handle   
+    do! PicoHarp.Initialise.initialiseMode handle Histogramming
     do! Histogram.setBinning handle histogram
     do! Histogram.stopOverflow handle histogram
     return opendev}
@@ -67,10 +67,10 @@ let initialise handle = asyncChoice{
 let measurement handle = asyncChoice{ 
     let array = Array.create 65536 0
     do! Histogram.clearmemory handle 0   
-    do! Histogram.startMeasurements handle histogram
+    do! Histogram.startMeasurement handle histogram
     /// Sleep for acquisition and then stop measurements.  
     do! Histogram.waitToFinishMeasurement handle 1000
-    do! Histogram.endMeasurements handle     
+    do! Histogram.endMeasurement handle     
     do! Histogram.getHistogram handle array 0
     return array}
 
@@ -112,7 +112,7 @@ let rec liveCounts duration (previousData:int[]) handle = asyncChoice{
         do! Async.Sleep 100 |> AsyncChoice.liftAsync
         do! liveCounts (duration - 1) yAxis handle
     else 
-        do! PicoHarp.initialise.closeDevice handle }
+        do! PicoHarp.Initialise.closeDevice handle }
 
 let experiment duration handle = asyncChoice{
     /// Inital data, counts all zero.

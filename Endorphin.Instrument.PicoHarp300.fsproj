@@ -51,6 +51,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="Error.fs" />
+    <Compile Include="Flag.fs" />
     <Compile Include="NativeModel.fs" />
     <Compile Include="NativeApi.fs" />
     <Compile Include="Model.fs" />
@@ -58,6 +59,7 @@
     <Compile Include="Quantities.fs" />
     <Compile Include="PicoHarp300.fs" />
     <Compile Include="Histogram.fs" />
+    <Compile Include="TTTRHistogram.fs" />
     <None Include="HistogramMeasurement.fsx" />
     <None Include="LiveCounts.fsx" />
     <None Include="LiveHistogram.fsx" />
@@ -71,6 +73,14 @@
     <Reference Include="ExtCore">
       <HintPath>..\Endorphin.Core\bin\Debug\ExtCore.dll</HintPath>
     </Reference>
+    <Reference Include="FSharp.Charting">
+      <HintPath>..\packages\FSharp.Charting.0.90.12\lib\net40\FSharp.Charting.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="FSharp.Charting.Gtk">
+      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\FSharp.Charting.Gtk.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FSharp.Control.Reactive">
       <HintPath>..\packages\FSharp.Control.Reactive.3.2.0\lib\net40\FSharp.Control.Reactive.dll</HintPath>
       <Private>True</Private>
@@ -79,11 +89,35 @@
       <HintPath>..\packages\FSharp.Core.3.1.2\lib\net40\FSharp.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="FSharp.PowerPack">
+      <HintPath>..\packages\FSPowerPack.Core.Community.2.0.0.0\Lib\Net40\FSharp.PowerPack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="FSharp.PowerPack.Linq">
+      <HintPath>..\packages\FSPowerPack.Linq.Community.2.0.0.0\Lib\Net40\FSharp.PowerPack.Linq.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="FSharp.PowerPack.Metadata">
+      <HintPath>..\packages\FSPowerPack.Metadata.Community.2.0.0.0\Lib\Net40\FSharp.PowerPack.Metadata.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="FSharp.PowerPack.Parallel.Seq">
+      <HintPath>..\packages\FSPowerPack.Parallel.Seq.Community.2.0.0.0\Lib\Net40\FSharp.PowerPack.Parallel.Seq.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="log4net">
       <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
+    <Reference Include="OxyPlot">
+      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="OxyPlot.GtkSharp">
+      <HintPath>..\packages\FSharp.Charting.Gtk.0.90.12\lib\net40\OxyPlot.GtkSharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />

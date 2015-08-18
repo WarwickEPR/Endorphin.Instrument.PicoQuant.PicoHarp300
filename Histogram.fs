@@ -92,17 +92,6 @@ module Histogram =
             (sprintf "Failed to retrieve histogram data from device: %A.") 
         |> AsyncChoice.liftChoice 
 
-    /// Writes channel count rate to a mutable int.  
-    let getCountRate picoHarp300 (channel:int) =
-        let mutable rate : int = Unchecked.defaultof<_>
-        PicoHarp.logDevice picoHarp300 "Retrieving channel count rate."
-        GetCountRate (PicoHarp.index picoHarp300, channel, &rate)
-        |> PicoHarp.checkStatusAndReturn (rate)
-        |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully retrieved channel count rate.")
-            (sprintf "Failed to retrieve channel count rate: %A")
-        |> AsyncChoice.liftChoice
-    
     /// Clears the histogram from picoHarps memory
     /// The argument block will always be zero unless routing is used. 
     let clearmemory picoHarp300 block =    

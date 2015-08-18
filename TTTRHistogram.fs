@@ -33,40 +33,18 @@ module TTTRHistogram =
         NativeApi.StartMeasurement (PicoHarp.index picoHarp300 , int (acquisitionTime)) 
         |> PicoHarp.checkStatus
         |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully set histogram acquisition time and started TTTR measurement") 
+            ("Successfully set acquisition time and started TTTR measurement") 
             (sprintf "Failed to start: %A.")
         |> AsyncChoice.liftChoice
     
     /// Stops histogram mode Measurements. 
     let endMeasurement picoHarp300 = 
-        PicoHarp.logDevice picoHarp300 "Ending Measurements."
+        PicoHarp.logDevice picoHarp300 "Ceasing measurement."
         NativeApi.StopMeasurement (PicoHarp.index picoHarp300)
         |> PicoHarp.checkStatus
         |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully ended measurements.")
-            (sprintf "Failed to end measurements: %A.")
-        |> AsyncChoice.liftChoice
-        
-    /// Writes histogram data into the array histogramData.
-    /// The argument block will always be zero unless routing is used. 
-    let getHistogram picoHarp300 (histogramData:int[]) (block:int)  = 
-        PicoHarp.logDevice picoHarp300 "Writing histogram data from device to an external array."
-        GetHistogram (PicoHarp.index picoHarp300, histogramData, block)
-        |> PicoHarp.checkStatus
-        |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully retrieved histogram data from device.")
-            (sprintf "Failed to retrieve histogram data from device: %A.") 
-        |> AsyncChoice.liftChoice 
-
-    /// Writes channel count rate to a mutable int.  
-    let getCountRate picoHarp300 (channel:int) =
-        let mutable rate : int = Unchecked.defaultof<_>
-        PicoHarp.logDevice picoHarp300 "Retrieving channel count rate."
-        GetCountRate (PicoHarp.index picoHarp300, channel, &rate)
-        |> PicoHarp.checkStatusAndReturn (rate)
-        |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully retrieved channel count rate.")
-            (sprintf "Failed to retrieve channel count rate: %A")
+            ("Successfully ended measurement.")
+            (sprintf "Failed to end measurement: %A.")
         |> AsyncChoice.liftChoice
     
     /// Clears the histogram from picoHarps memory
@@ -83,9 +61,8 @@ module TTTRHistogram =
     /// Ties together functions needed to take a single measurement 
     let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = asyncChoice{ 
         let! clear     = clearmemory picoHarp300 0 
-        let! startMeas = startMeasurements picoHarp300 histogram  
-        let! endMeas   = endMeasurements picoHarp300
-        let! histogram = getHistogram picoHarp300 array 0
+        let! startMeas = startMeasurement picoHarp300 histogram  
+        let! endMeas   = endMeasurement picoHarp300
         return histogram}
 
 

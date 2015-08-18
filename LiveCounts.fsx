@@ -3,7 +3,7 @@
 #r @"..\Endorphin.Core\bin\Debug\Endorphin.Core.dll"
 #r "NationalInstruments.Common.dll"
 #r "NationalInstruments.VisaNS.dll"
-#r "FSharp.PowerPack.dll"
+#r "../packages/FSPowerPack.Core.Community.2.0.0.0/Lib/Net40/FSharp.PowerPack.dll"
 #r "bin/Debug/PicoHarp300.dll"
 #r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "System.Windows.Forms.DataVisualization.dll"
@@ -29,7 +29,7 @@ let histogram = {
     }
 
 /// Finds the device index of the PicoHarp. 
-let handle = PicoHarp.initialise.picoHarp "1020854"
+let handle = PicoHarp.Initialise.picoHarp "1020854"
 
 let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let uiContext = SynchronizationContext.Current
@@ -50,8 +50,8 @@ let showChart data = async {
 
 /// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
 let initialise handle = asyncChoice{  
-    let! opendev  = PicoHarp.initialise.openDevice handle   
-    do! PicoHarp.initialise.initialiseMode handle Histogramming
+    let! opendev  = PicoHarp.Initialise.openDevice handle   
+    do! PicoHarp.Initialise.initialiseMode handle Histogramming
     do! Histogram.setBinning handle histogram
     do! Histogram.stopOverflow handle histogram
     return opendev}
@@ -60,10 +60,10 @@ let initialise handle = asyncChoice{
 let experiment handle = asyncChoice {
     let array = Array.create 65535 0
     do! Histogram.clearmemory handle 0 
-    do! Histogram.startMeasurements handle histogram
+    do! Histogram.startMeasurement handle histogram
     /// Sleep for acquisition and then stop measurements.  
     do! Histogram.waitToFinishMeasurement handle 1000
-    do! Histogram.endMeasurements handle     
+    do! Histogram.endMeasurement handle     
     do! Histogram.getHistogram handle array 0
     let total = Array.sum array
     return total }
@@ -80,7 +80,7 @@ let rec liveCounts (duration:int) (time:int) handle = asyncChoice {
         do! Async.Sleep 100 |> AsyncChoice.liftAsync
         do! liveCounts  (duration - 1) (time + 1) handle
      else 
-        do! PicoHarp.initialise.closeDevice handle }
+        do! PicoHarp.Initialise.closeDevice handle }
 
 initialise handle |> Async.RunSynchronously
 Async.StartWithContinuations(liveCounts 10 0 handle , printfn "%A", ignore, ignore)
