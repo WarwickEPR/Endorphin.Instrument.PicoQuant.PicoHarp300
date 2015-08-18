@@ -40,7 +40,6 @@ module Model =
         type InputChannel = 
             | Channel0
             | Channel1 
-            | Both 
 
         ///Both input channels contain a CFD, discriminator level and zero cross should be in millivolts, will have a unit converotr function.
         type CFD =
@@ -66,7 +65,7 @@ module Model =
             | MarkerChannel_1
             | MarkerChannel_2
             | MarkerChannel_3
-
+  
         [<Literal>]
         let TTTRMaxEvents = 131072
     ///Contains types relating to propeties of the histogram.    
@@ -91,6 +90,7 @@ module Model =
     /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
     type TTTRHistogramParameters = 
         { Resolution        : Resolution
+          NumberOfBins      : int
           AcquisitionTime   : Duration
           MarkerChannel     : MarkerChannel }
 

@@ -37,7 +37,7 @@ module TTTRHistogram =
             (sprintf "Failed to start: %A.")
         |> AsyncChoice.liftChoice
     
-    /// Stops histogram mode Measurements. 
+    /// Stops TTTR mode measurement 
     let endMeasurement picoHarp300 = 
         PicoHarp.logDevice picoHarp300 "Ceasing measurement."
         NativeApi.StopMeasurement (PicoHarp.index picoHarp300)
@@ -46,25 +46,11 @@ module TTTRHistogram =
             ("Successfully ended measurement.")
             (sprintf "Failed to end measurement: %A.")
         |> AsyncChoice.liftChoice
-    
-    /// Clears the histogram from picoHarps memory
-    /// The argument block will always be zero unless routing is used. 
-    let clearmemory picoHarp300 block =    
-        PicoHarp.logDevice picoHarp300 "Clearing histogram data from device memory."
-        NativeApi.ClearHistMem (PicoHarp.index picoHarp300, block)
-        |> PicoHarp.checkStatus
-        |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Cleared histogram data from device memory.")
-            (sprintf "Failed to clear histogram data from device memory: %A.")
-        |> AsyncChoice.liftChoice
 
     /// Ties together functions needed to take a single measurement 
     let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = asyncChoice{ 
-        let! clear     = clearmemory picoHarp300 0 
         let! startMeas = startMeasurement picoHarp300 histogram  
         let! endMeas   = endMeasurement picoHarp300
         return histogram}
-
-
     
     let counts picoHarp300 (histogram: int[]) = Array.sum histogram

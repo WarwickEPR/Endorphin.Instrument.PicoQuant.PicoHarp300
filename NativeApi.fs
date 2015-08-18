@@ -14,7 +14,8 @@ open ExtCore.Control
 [<AutoOpen>]
 module internal NativeApi = 
 
-    [<Literal>] let dllName = "PHlib.dll"
+    [<Literal>] 
+    let dllName = "PHlib.dll"
     
     [<DllImport(dllName, EntryPoint = "PH_GetLibraryVersion")>]
     /// Returns the version of the PHLib library.

@@ -7,7 +7,6 @@ open System.Text
 open Endorphin.Core
 open ExtCore.Control
 
-
 module PicoHarp = 
     
     /// Checks return value of the NativeApi function and converts to a success or gives an error message.
