@@ -213,3 +213,28 @@ module PicoHarp =
                 ("Successfully initialised channel's CFD.")
                 (sprintf "Failed to initialis channel's CFD: %A")
             |> AsyncChoice.liftChoice
+
+    
+    /// measurement functions which are useful in both histogramming and TTTR mode
+    module query =
+        /// Returns time period over which experiment was running. 
+        let getMeasurementTime picoHarp300 =
+            let mutable elasped : double = Unchecked.defaultof<_>
+            logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
+            NativeApi.GetElapsedMeasTime (index picoHarp300, &elasped) 
+            |> checkStatus
+            |> logQueryResult 
+                (sprintf "Successfully retrieved measurement time: %A")
+                (sprintf "Failed to retrieve measurement time: %A") 
+            |> AsyncChoice.liftChoice
+
+        /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
+        let getCTCStatus picoHarp300 = 
+            let mutable ctcStatus : int = Unchecked.defaultof<_>
+            logDevice picoHarp300 "Checking CTC status" 
+            NativeApi.CTCStatus (index picoHarp300, &ctcStatus)   
+            |> checkStatus
+            |> logQueryResult 
+                (sprintf "Successfully retrieved CTC status: %A")
+                (sprintf "Failed to retrieve CTC status: %A") 
+            |> AsyncChoice.liftChoice

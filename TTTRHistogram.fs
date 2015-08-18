@@ -9,41 +9,7 @@ open Endorphin.Core.NationalInstruments
 open Endorphin.Core.String
 open ExtCore.Control
 
-module Histogram = 
-    /// Sets the overflow limit on or off for the histogram bins.
-    let stopOverflow picoHarp300 (histogram : HistogramParameters) = 
-        /// Sets cap on number of counts per bin, minimum cap is 1 and maximum is 65535.      
-        match histogram.Overflow with
-        /// If overflow is turned on then check if limit is inside allowed range and then write to PicoHarp.
-        | Some limit -> if (limit < 65535 && limit > 0) then 
-                            PicoHarp.logDevice picoHarp300 "Setting histogram channel count limit"  
-                            NativeApi.SetStopOverflow (PicoHarp.index picoHarp300, 0, limit)
-                            |> PicoHarp.checkStatus
-                            |> PicoHarp.logDeviceOpResult picoHarp300
-                                ("Successfully set limit for number of counts per histogram channel.")
-                                (sprintf "Failed to set limit for counts per histogram channel: %A")
-                            |> AsyncChoice.liftChoice
-                        else failwithf "Invalid count limit, must be between 1 and 65535"
-        /// If overflow is switched off then set limit to the maximum and turn off.
-        | None ->           PicoHarp.logDevice picoHarp300 "Setting histogram channel count limit to maximum: 65535"
-                            NativeApi.SetStopOverflow (PicoHarp.index picoHarp300, 1, 65535)
-                            |> PicoHarp.checkStatus
-                            |> PicoHarp.logDeviceOpResult picoHarp300
-                                (sprintf "Successfully set limit for number of counts per histogram channel to maximum.")
-                                (sprintf "Failed to set limit for counts per histogram channel to maximum: %A")
-                            |> AsyncChoice.liftChoice
-    
-    /// Sets the bin resolution for the histogram.
-    let setBinning picoHarp300 (histogram : HistogramParameters) = 
-        let binning = resolutionEnum (histogram.Resolution)
-        PicoHarp.logDevice picoHarp300 "Setting histogram bin resolution."
-        NativeApi.SetBinning (PicoHarp.index picoHarp300, binning)
-        |> PicoHarp.checkStatus 
-        |> PicoHarp.logDeviceOpResult picoHarp300 
-            ("Successfully set histogram binning resolution.") 
-            (sprintf "Failed to set histogram binning resolution: %A")
-        |> AsyncChoice.liftChoice
-
+module TTTRHistogram = 
     let checkMeasurementFinished picoHarp300 =
         let mutable result = 0
         PicoHarp.logDevice picoHarp300 "Checking whether acquisition has finished."
@@ -124,4 +90,28 @@ module Histogram =
         let! histogram = getHistogram picoHarp300 array 0
         return histogram}
     
-    let counts picoHarp300 (histogram: int[]) = Array.sum histogram  
+    let counts picoHarp300 (histogram: int[]) = Array.sum histogram
+
+    module query =
+       
+        /// Returns time period over which experiment was running. 
+        let getMeasurementTime picoHarp300 =
+            let mutable elasped : double = Unchecked.defaultof<_>
+            PicoHarp.logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
+            NativeApi.GetElapsedMeasTime (PicoHarp.index picoHarp300, &elasped) 
+            |> PicoHarp.checkStatus
+            |> PicoHarp.logQueryResult 
+                (sprintf "Successfully retrieved measurement time: %A")
+                (sprintf "Failed to retrieve measurement time: %A") 
+            |> AsyncChoice.liftChoice
+
+        /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
+        let getCTCStatus picoHarp300 = 
+            let mutable ctcStatus : int = Unchecked.defaultof<_>
+            PicoHarp.logDevice picoHarp300 "Checking CTC status" 
+            NativeApi.CTCStatus (PicoHarp.index picoHarp300, &ctcStatus)   
+            |> PicoHarp.checkStatus
+            |> PicoHarp.logQueryResult 
+                (sprintf "Successfully retrieved CTC status: %A")
+                (sprintf "Failed to retrieve CTC status: %A") 
+            |> AsyncChoice.liftChoice

@@ -5,7 +5,7 @@
 #r "NationalInstruments.VisaNS.dll"
 #r "FSharp.PowerPack.dll"
 #r "bin/Debug/PicoHarp300.dll"
-#r "../packages/FSharp.Charting.0.90.9/lib/net40/FSharp.Charting.dll"
+#r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "System.Windows.Forms.DataVisualization.dll"
 
 open System
@@ -57,6 +57,3 @@ let experiment handle = asyncChoice{
 initialise handle |> Async.RunSynchronously
 experiment handle |> Async.RunSynchronously
                   |> sprintf "%A"
-                 
-
-
