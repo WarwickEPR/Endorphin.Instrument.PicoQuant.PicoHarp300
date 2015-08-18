@@ -45,7 +45,7 @@ module PicoHarp =
     /// Extract the device index 
     let internal index (PicoHarp300 h) = h
     
-    module initialise =     
+    module Initialise =     
        
        /// Returns the device index of a PicoHarp using serial number.
        /// Stops recursion after deviceIndex > 7 as allowed values are 0..7. 
@@ -216,7 +216,7 @@ module PicoHarp =
 
     
     /// measurement functions which are useful in both histogramming and TTTR mode
-    module query =
+    module Query =
         /// Returns time period over which experiment was running. 
         let getMeasurementTime picoHarp300 =
             let mutable elasped : double = Unchecked.defaultof<_>

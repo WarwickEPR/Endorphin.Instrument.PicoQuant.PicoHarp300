@@ -12,10 +12,6 @@ module Model =
 
     type PicoHarp300 = internal PicoHarp300 of index : int
 
-    type Feature =
-        | Feature1
-        | Feature2
-
     /// Type containing all PicoHarp's propeties.
     type DeviceParameters =
         { SerialNumber   : string
@@ -59,7 +55,20 @@ module Model =
         
         /// Sets offset, only possible in modes Histogram and T3.
         type Offset = Offset of int option 
-    
+   
+    /// Settings which apply only to free-running TTTR mode measurements
+    [<AutoOpen>]
+    module SetupT2Measurements = 
+            
+        /// Possible marker channels which can be recorded in the TTTR stream
+        type MarkerChannel = 
+            | MarkerChannel_0
+            | MarkerChannel_1
+            | MarkerChannel_2
+            | MarkerChannel_3
+
+        [<Literal>]
+        let TTTRMaxEvents = 131072
     ///Contains types relating to propeties of the histogram.    
         
     ///Possible histogram bin widths.
@@ -77,7 +86,8 @@ module Model =
     type HistogramParameters = 
         { Resolution      : Resolution
           AcquisitionTime : Duration
-          Overflow        : int option }
+          Overflow        : int option 
+          MarkerChannel   : MarkerChannel option}
     
     /// Channel 1 is used as a sync input for time resolved fluorescence with a pulsed exitation source.
     /// For correlation experiments ignore the sync settings. 
@@ -96,184 +106,3 @@ module Model =
         type SyncParameters =
             { RateDivider : RateDivider
               Delay       : Duration }
-
-    /// Settings which apply only to free-running TTTR mode measurements
-    [<AutoOpen>]
-    module SetupT2Measurements = 
-            
-        /// Set which marker channel will be used to indicate each shot
-        type MarkerChannel = 
-            | MarkerChannel_0
-            | MarkerChannel_1
-            | MarkerChannel_2
-            | MarkerChannel_3
-        
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

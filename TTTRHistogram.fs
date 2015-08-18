@@ -27,18 +27,18 @@ module TTTRHistogram =
             do! waitToFinishMeasurement picoHarp300 pollDelay }
         
     /// Starts histogram mode Measurements, requires an acquisition time aka the period of time to take Measurements over.
-    let startMeasurements picoHarp300 (histogram : HistogramParameters) = 
+    let startMeasurement picoHarp300 (histogram : HistogramParameters) = 
         let acquisitionTime = Quantities.durationMilliSeconds (histogram.AcquisitionTime)
         PicoHarp.logDevice picoHarp300 "Setting acquisition time and starting Measurements."
         NativeApi.StartMeasurement (PicoHarp.index picoHarp300 , int (acquisitionTime)) 
         |> PicoHarp.checkStatus
         |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully set histogram acquisition time and started Measurements") 
+            ("Successfully set histogram acquisition time and started TTTR measurement") 
             (sprintf "Failed to start: %A.")
         |> AsyncChoice.liftChoice
     
     /// Stops histogram mode Measurements. 
-    let endMeasurements picoHarp300 = 
+    let endMeasurement picoHarp300 = 
         PicoHarp.logDevice picoHarp300 "Ending Measurements."
         NativeApi.StopMeasurement (PicoHarp.index picoHarp300)
         |> PicoHarp.checkStatus
@@ -79,39 +79,15 @@ module TTTRHistogram =
             ("Cleared histogram data from device memory.")
             (sprintf "Failed to clear histogram data from device memory: %A.")
         |> AsyncChoice.liftChoice
-    
+
     /// Ties together functions needed to take a single measurement 
     let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = asyncChoice{ 
         let! clear     = clearmemory picoHarp300 0 
-        let! bin       = setBinning picoHarp300 histogram
-        let! overflow  = stopOverflow picoHarp300 histogram
         let! startMeas = startMeasurements picoHarp300 histogram  
         let! endMeas   = endMeasurements picoHarp300
         let! histogram = getHistogram picoHarp300 array 0
         return histogram}
+
+
     
     let counts picoHarp300 (histogram: int[]) = Array.sum histogram
-
-    module query =
-       
-        /// Returns time period over which experiment was running. 
-        let getMeasurementTime picoHarp300 =
-            let mutable elasped : double = Unchecked.defaultof<_>
-            PicoHarp.logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
-            NativeApi.GetElapsedMeasTime (PicoHarp.index picoHarp300, &elasped) 
-            |> PicoHarp.checkStatus
-            |> PicoHarp.logQueryResult 
-                (sprintf "Successfully retrieved measurement time: %A")
-                (sprintf "Failed to retrieve measurement time: %A") 
-            |> AsyncChoice.liftChoice
-
-        /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
-        let getCTCStatus picoHarp300 = 
-            let mutable ctcStatus : int = Unchecked.defaultof<_>
-            PicoHarp.logDevice picoHarp300 "Checking CTC status" 
-            NativeApi.CTCStatus (PicoHarp.index picoHarp300, &ctcStatus)   
-            |> PicoHarp.checkStatus
-            |> PicoHarp.logQueryResult 
-                (sprintf "Successfully retrieved CTC status: %A")
-                (sprintf "Failed to retrieve CTC status: %A") 
-            |> AsyncChoice.liftChoice

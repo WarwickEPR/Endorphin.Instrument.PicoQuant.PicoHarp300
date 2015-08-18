@@ -61,7 +61,7 @@ module Histogram =
             do! waitToFinishMeasurement picoHarp300 pollDelay }
         
     /// Starts histogram mode Measurements, requires an acquisition time aka the period of time to take Measurements over.
-    let startMeasurements picoHarp300 (histogram : HistogramParameters) = 
+    let startMeasurement picoHarp300 (histogram : HistogramParameters) = 
         let acquisitionTime = Quantities.durationMilliSeconds (histogram.AcquisitionTime)
         PicoHarp.logDevice picoHarp300 "Setting acquisition time and starting Measurements."
         NativeApi.StartMeasurement (PicoHarp.index picoHarp300 , int (acquisitionTime)) 
@@ -72,7 +72,7 @@ module Histogram =
         |> AsyncChoice.liftChoice
     
     /// Stops histogram mode Measurements. 
-    let endMeasurements picoHarp300 = 
+    let endMeasurement picoHarp300 = 
         PicoHarp.logDevice picoHarp300 "Ending Measurements."
         NativeApi.StopMeasurement (PicoHarp.index picoHarp300)
         |> PicoHarp.checkStatus
@@ -119,8 +119,8 @@ module Histogram =
         let! clear     = clearmemory picoHarp300 0 
         let! bin       = setBinning picoHarp300 histogram
         let! overflow  = stopOverflow picoHarp300 histogram
-        let! startMeas = startMeasurements picoHarp300 histogram  
-        let! endMeas   = endMeasurements picoHarp300
+        let! startMeas = startMeasurement picoHarp300 histogram  
+        let! endMeas   = endMeasurement picoHarp300
         let! histogram = getHistogram picoHarp300 array 0
         return histogram}
     
