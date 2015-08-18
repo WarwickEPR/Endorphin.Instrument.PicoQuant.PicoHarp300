@@ -16,6 +16,12 @@ module PicoHarp =
         | Error.Ok -> succeed ()
         | Error.Error string -> fail string 
 
+    /// Check the value of set flags
+    let internal checkFlags = 
+        function
+        | Flag.Ok -> succeed ()
+        | Flag.Flag string -> fail string
+
     let internal checkStatusAndReturn value status = choice {
         do! checkStatus status
         return value }

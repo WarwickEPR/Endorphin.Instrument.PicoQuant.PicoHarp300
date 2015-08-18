@@ -104,7 +104,7 @@ module internal NativeApi =
     extern ErrorCode GetCountRate (int devidx, int channel, int& rate);
 
     [<DllImport(dllName, EntryPoint = "PH_GetFlags")>]
-    
+    /// Retrieve hardware status flags
     extern ErrorCode GetFlags (int devidx, int* flags); 
     
     [<DllImport(dllName, EntryPoint = "PH_CloseDevice")>]

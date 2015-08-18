@@ -26,10 +26,10 @@ module TTTRHistogram =
             do! Async.Sleep pollDelay |> AsyncChoice.liftAsync
             do! waitToFinishMeasurement picoHarp300 pollDelay }
         
-    /// Starts histogram mode Measurements, requires an acquisition time aka the period of time to take Measurements over.
+    /// Starts TTTR mode measurement
     let startMeasurement picoHarp300 (histogram : HistogramParameters) = 
         let acquisitionTime = Quantities.durationMilliSeconds (histogram.AcquisitionTime)
-        PicoHarp.logDevice picoHarp300 "Setting acquisition time and starting Measurements."
+        PicoHarp.logDevice picoHarp300 "Setting acquisition time and starting measurement."
         NativeApi.StartMeasurement (PicoHarp.index picoHarp300 , int (acquisitionTime)) 
         |> PicoHarp.checkStatus
         |> PicoHarp.logDeviceOpResult picoHarp300
