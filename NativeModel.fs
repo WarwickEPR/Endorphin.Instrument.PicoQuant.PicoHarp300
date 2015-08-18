@@ -5,6 +5,7 @@ module internal NativeModel =
 
     type ModeEnum =
         | Histogramming = 0
+        | T2 = 2
 
     type ChannelEnum =
         | Channel0 = 0

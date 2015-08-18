@@ -52,9 +52,10 @@ module Model =
               DiscriminatorLevel : Voltage 
               ZeroCross          : Voltage }
             
-        ///Three possible modes, likley this programme will only deal with Histogramming.
+        /// Only two of the three modes are implemented here
         type Mode = 
             | Histogramming
+            | T2
         
         /// Sets offset, only possible in modes Histogram and T3.
         type Offset = Offset of int option 
@@ -95,6 +96,17 @@ module Model =
         type SyncParameters =
             { RateDivider : RateDivider
               Delay       : Duration }
+
+    /// Settings which apply only to free-running TTTR mode measurements
+    [<AutoOpen>]
+    module SetupT2Measurements = 
+            
+        /// Set which marker channel will be used to indicate each shot
+        type MarkerChannel = 
+            | MarkerChannel_0
+            | MarkerChannel_1
+            | MarkerChannel_2
+            | MarkerChannel_3
         
             
 

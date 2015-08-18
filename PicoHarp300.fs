@@ -42,7 +42,7 @@ module PicoHarp =
 
     let internal logDeviceOpResult picoHarp300 successMessage = logDeviceQueryResult picoHarp300 (fun _ -> successMessage)
     
-    /// The device index. 
+    /// Extract the device index 
     let internal index (PicoHarp300 h) = h
     
     module initialise =     
@@ -57,7 +57,7 @@ module PicoHarp =
                 let check = NativeApi.OpenDevice (index picoHarp300, serialNumber) 
                             |> checkStatus
                 if (serial = string(serialNumber)) then
-                     deviceIndex
+                    deviceIndex
                 else 
                     getDeviceIndex serial (deviceIndex + 1)   
         
@@ -83,7 +83,7 @@ module PicoHarp =
             |> checkStatus
             |> logDeviceOpResult picoHarp300  
                 ("Successfully calibrated the device.")
-                (sprintf "Failed to calibrate the device: %s." )
+                (sprintf "Failed to calibrate the device: %A.")
             |> AsyncChoice.liftChoice
 
         /// Sets the PicoHarps mode.
@@ -213,5 +213,3 @@ module PicoHarp =
                 ("Successfully initialised channel's CFD.")
                 (sprintf "Failed to initialis channel's CFD: %A")
             |> AsyncChoice.liftChoice
-           
-           

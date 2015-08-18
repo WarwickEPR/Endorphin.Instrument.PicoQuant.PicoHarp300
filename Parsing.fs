@@ -13,10 +13,12 @@ module internal Parsing =
     /// Converts type Mode into integers. 
     let modeEnum = function
         | Histogramming -> ModeEnum.Histogramming
+        | T2 -> ModeEnum.T2
 
     /// Converts mode integer back into type Mode.
     let parseMode = function
         | ModeEnum.Histogramming -> Histogramming
+        | ModeEnum.T2 -> T2
         | mode               -> failwithf "Unexpected mode enum value: %A." mode
 
     /// Converts type InputChannel into corresponding integers.

@@ -10,7 +10,6 @@ open Endorphin.Core.String
 open ExtCore.Control
 
 module Histogram = 
-     
     /// Sets the overflow limit on or off for the histogram bins.
     let stopOverflow picoHarp300 (histogram : HistogramParameters) = 
         /// Sets cap on number of counts per bin, minimum cap is 1 and maximum is 65535.      
