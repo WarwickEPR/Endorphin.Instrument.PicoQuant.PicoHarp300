@@ -255,3 +255,31 @@ module PicoHarp =
                 (sprintf "Failed to retrieve channel count rate: %A")
             |> AsyncChoice.liftChoice
     
+    module internal Acquisition = 
+        /// Starts a measurement
+        let start picoHarp300 duration = 
+            let acquisitionTime = Quantities.durationMilliSeconds duration
+            logDevice picoHarp300 "Setting acquisition time and starting measurement."
+            NativeApi.StartMeasurement (index picoHarp300 , int (acquisitionTime)) 
+            |> checkStatus
+            |> logDeviceOpResult picoHarp300
+                ("Successfully set acquisition time and started TTTR measurement") 
+                (sprintf "Failed to start: %A.")
+            |> AsyncChoice.liftChoice
+
+        /// Read TTTR FIFO buffer
+        let readFifoBuffer picoHarp300 (streamingBuffer : StreamingBuffer) = 
+            let mutable counts = Unchecked.defaultof<_>
+            NativeApi.ReadFiFo(index picoHarp300, streamingBuffer.Buffer, TTTRMaxEvents, &counts)
+            |> checkStatusAndReturn (counts)
+            |> AsyncChoice.liftChoice
+    
+        /// Stops a measurement 
+        let stop picoHarp300 = 
+            logDevice picoHarp300 "Ceasing measurement."
+            NativeApi.StopMeasurement (index picoHarp300)
+            |> checkStatus
+            |> logDeviceOpResult picoHarp300
+                ("Successfully ended measurement.")
+                (sprintf "Failed to end measurement: %A.")
+            |> AsyncChoice.liftChoice

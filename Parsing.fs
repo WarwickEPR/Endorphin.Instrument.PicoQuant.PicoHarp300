@@ -25,6 +25,7 @@ module internal Parsing =
     let channelEnum = function
         | Channel0 -> ChannelEnum.Channel0
         | Channel1 -> ChannelEnum.Channel1
+        | channel  -> failwithf "Unexpected channel: %A." channel
 
     /// Converts channel number back into type InputChannel. 
     let parseChannel = function

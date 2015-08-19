@@ -20,19 +20,22 @@ module TTTRHistogram =
         | FailedStream of error : string
         | CancelledStream of exn : OperationCanceledException
 
-    type EventStreamObserved = 
-        internal { EventStream      : double[] }
+    type EventStream = 
+        private { Events : int[] }
 
     type HistogramAcquisition = 
         private { Parameters            : TTTRHistogramParameters
+                  StreamingBuffer       : StreamingBuffer
                   PicoHarp              : PicoHarp300
                   StopCapability        : CancellationCapability<StreamStopOptions>
                   StatusChanged         : Event<StreamStatus>
-                  EventsAvailable       : Event<EventStreamObserved> }
+                  EventsAvailable       : Event<EventStream> }
 
     type HistogramAcquisitionHandle = 
         private { Acquisition   : HistogramAcquisition
                   WaitToFinish  : AsyncChoice<unit, string> }
+
+    type Histogram = unit
 
     module Parameters =
         let create resolution numberOfBins acquisitionTime markerChannel = 
@@ -46,14 +49,32 @@ module TTTRHistogram =
         let withAcquisitionTime acquisitionTime (parameters: TTTRHistogramParameters) = { parameters with AcquisitionTime = acquisitionTime }
         let withMarkerChannel markerChannel     (parameters: TTTRHistogramParameters) = { parameters with MarkerChannel = markerChannel }
 
+     module internal HistogramEvent = 
+        type HistogramEvent = 
+            private { Trigger   : EventStream -> unit
+                      Publish   : IObservable<Histogram> }
+        
+        let trigger event = event.Trigger
 
+        let available event = 
+            event.Publish
+
+        let create = 
+            let input = new Event<_>()
+            let output = input .Publish|> Event.map ignore // TODO : implement processing here
+            
+            { Trigger = input.Trigger ; Publish = output }
+            
     module Acquisition = 
+        let private buffer =  Array.zeroCreate TTTRMaxEvents
+        
         let create picoHarp histogramParameters = 
             { Parameters = histogramParameters
+              StreamingBuffer = { Buffer = buffer }
               PicoHarp = picoHarp
               StopCapability = new CancellationCapability<StreamStopOptions>()
               StatusChanged = new Event<StreamStatus>()
-              EventsAvailable = new Event<EventStreamObserved>() }
+              EventsAvailable = new Event<EventStream>() }
         
         let status acquisition =
             acquisition.StatusChanged.Publish
@@ -65,18 +86,34 @@ module TTTRHistogram =
                 | FailedStream message -> Some (Exception message)
                 | _                    -> None)
               
-        let private startMeasurement acquisition = 
+        let private startStreaming acquisition = asyncChoice { 
             let acquisitionTime = Quantities.durationMilliSeconds acquisition.Parameters.AcquisitionTime
-            NativeApi.StartMeasurement (PicoHarp.index acquisition.PicoHarp, int acquisitionTime)
-            |> PicoHarp.checkStatus
-            |> AsyncChoice.liftChoice
+            let! __ = PicoHarp.Acquisition.start acquisition.PicoHarp acquisition.Parameters.AcquisitionTime
+            acquisition.StatusChanged.Trigger (Streaming) }
+    
+        let private copyBufferAndFireEvent acquisition counts =
+            let buffer = Array.zeroCreate counts
+            acquisition.StreamingBuffer.Buffer.CopyTo (buffer, 0)
+
+            acquisition.EventsAvailable.Trigger { Events = buffer }
+
+        let rec private pollUntilFinished acquisition = asyncChoice {
+            if not acquisition.StopCapability.IsCancellationRequested then
+                let! counts = 
+                    PicoHarp.Acquisition.readFifoBuffer 
+                    <| acquisition.PicoHarp
+                    <| acquisition.StreamingBuffer
+
+                copyBufferAndFireEvent acquisition counts
+
+                do! pollUntilFinished acquisition }
 
         let start acquisition : AsyncChoice<HistogramAcquisitionHandle, string> = 
             if acquisition.StopCapability.IsCancellationRequested then
                 failwith "Cannot start an acquisition which has already been stopped."
 
             let finishAcquisition cont acquisitionResult = Async.StartImmediate <| async {
-                let! stopResult = endMeasurement acquisition.PicoHarp 
+                let! stopResult = PicoHarp.Acquisition.stop acquisition.PicoHarp 
                 match acquisitionResult, stopResult with
                 | Success (), Success () ->
                     acquisition.StatusChanged.Trigger (FinishedStream acquisition.StopCapability.Options)
@@ -87,9 +124,34 @@ module TTTRHistogram =
                     cont (fail error)
                 | Failure f, _ ->
                     acquisition.StatusChanged.Trigger (FailedStream f)
-                    cont (fail f)
-                                }
+                    cont (fail f) }
+            
+            let stopAcquisitionAfterCancellation ccont econt exn = Async.StartImmediate <| async { 
+                let! stopResult =  PicoHarp.Acquisition.stop acquisition.PicoHarp
+                match stopResult with
+                | Success () ->
+                    acquisition.StatusChanged.Trigger (CancelledStream exn)
+                    ccont exn
+                | Failure f ->
+                    let error = sprintf "Acquisition failed to stop after cancellation: %s" f
+                    acquisition.StatusChanged.Trigger (FailedStream error)
+                    econt (Exception error) }
 
+            let acquisitionWorkflow cancellationToken =
+                Async.FromContinuations (fun (cont, econt, ccont) ->
+                    Async.StartWithContinuations(
+                        asyncChoice {
+                            do! startStreaming acquisition
+                            do! pollUntilFinished acquisition }, 
+                    
+                        finishAcquisition cont, econt, stopAcquisitionAfterCancellation ccont econt,
+                        cancellationToken))
+
+            async {
+                let! cancellationToken = Async.CancellationToken
+                let! waitToFinish = Async.StartChild (acquisitionWorkflow cancellationToken)
+                return { Acquisition = acquisition ; WaitToFinish = waitToFinish } }
+            |> AsyncChoice.liftAsync
 
     let checkMeasurementFinished picoHarp300 =
         let mutable result = 0
@@ -106,32 +168,3 @@ module TTTRHistogram =
         if not finished then
             do! Async.Sleep pollDelay |> AsyncChoice.liftAsync
             do! waitToFinishMeasurement picoHarp300 pollDelay }
-        
-    /// Starts TTTR mode measurement
-    let startMeasurement picoHarp300 (histogram : HistogramParameters) = 
-        let acquisitionTime = Quantities.durationMilliSeconds (histogram.AcquisitionTime)
-        PicoHarp.logDevice picoHarp300 "Setting acquisition time and starting measurement."
-        NativeApi.StartMeasurement (PicoHarp.index picoHarp300 , int (acquisitionTime)) 
-        |> PicoHarp.checkStatus
-        |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully set acquisition time and started TTTR measurement") 
-            (sprintf "Failed to start: %A.")
-        |> AsyncChoice.liftChoice
-    
-    /// Stops TTTR mode measurement 
-    let endMeasurement picoHarp300 = 
-        PicoHarp.logDevice picoHarp300 "Ceasing measurement."
-        NativeApi.StopMeasurement (PicoHarp.index picoHarp300)
-        |> PicoHarp.checkStatus
-        |> PicoHarp.logDeviceOpResult picoHarp300
-            ("Successfully ended measurement.")
-            (sprintf "Failed to end measurement: %A.")
-        |> AsyncChoice.liftChoice
-
-    /// Ties together functions needed to take a single measurement 
-    let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = asyncChoice{ 
-        let! startMeas = startMeasurement picoHarp300 histogram  
-        let! endMeas   = endMeasurement picoHarp300
-        return histogram}
-    
-    let counts picoHarp300 (histogram: int[]) = Array.sum histogram

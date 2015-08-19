@@ -40,6 +40,7 @@ module Model =
         type InputChannel = 
             | Channel0
             | Channel1 
+            | Both
 
         ///Both input channels contain a CFD, discriminator level and zero cross should be in millivolts, will have a unit converotr function.
         type CFD =
@@ -55,19 +56,6 @@ module Model =
         /// Sets offset, only possible in modes Histogram and T3.
         type Offset = Offset of int option 
    
-    /// Settings which apply only to free-running TTTR mode measurements
-    [<AutoOpen>]
-    module SetupT2Measurements = 
-            
-        /// Possible marker channels which can be recorded in the TTTR stream
-        type MarkerChannel = 
-            | MarkerChannel_0
-            | MarkerChannel_1
-            | MarkerChannel_2
-            | MarkerChannel_3
-  
-        [<Literal>]
-        let TTTRMaxEvents = 131072
     ///Contains types relating to propeties of the histogram.    
         
     ///Possible histogram bin widths.
@@ -87,16 +75,35 @@ module Model =
           AcquisitionTime : Duration
           Overflow        : int option }
       
-    /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
-    type TTTRHistogramParameters = 
-        internal { Resolution        : Resolution
-                   NumberOfBins      : int
-                   AcquisitionTime   : Duration
-                   MarkerChannel     : MarkerChannel }
+
+    /// Settings which apply only to free-running TTTR mode measurements
+    [<AutoOpen>]
+    module SetupTTTRMeasurements = 
+            
+        /// Possible marker channels which can be recorded in the TTTR stream
+        type MarkerChannel = 
+            | MarkerChannel_0
+            | MarkerChannel_1
+            | MarkerChannel_2
+            | MarkerChannel_3
+  
+        /// Maximum number of events that the PicoHarp can return during any one USB transfer
+        [<Literal>]
+        let internal TTTRMaxEvents = 131072
+        
+        /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
+        type TTTRHistogramParameters = 
+            internal { Resolution        : Resolution
+                       NumberOfBins      : int
+                       AcquisitionTime   : Duration
+                       MarkerChannel     : MarkerChannel }
+
+        /// Buffer to hold the results of each streaming event
+        type StreamingBuffer = 
+            internal { Buffer    : int[] }
 
     /// Channel 1 is used as a sync input for time resolved fluorescence with a pulsed exitation source.
     /// For correlation experiments ignore the sync settings. 
-    
     [<AutoOpen>]
     module ChannelSync = 
         
