@@ -83,10 +83,14 @@ module Model =
         /// Maximum number of events that the PicoHarp can return during any one USB transfer
         [<Literal>]
         let internal TTTRMaxEvents = 131072
+
+        [<Literal>]
+        let internal TTTROverflowTime = 210698240UL
         
         /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
         type TTTRHistogramParameters = 
-            internal { BinWidth          : Duration
+            internal { Resolution        : float<ns>
+                       TotalLength       : float<ns>
                        NumberOfBins      : int }
 
         /// Buffer to hold the results of each streaming event

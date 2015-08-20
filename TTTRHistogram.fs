@@ -42,17 +42,21 @@ module TTTRHistogram =
     type Histogram = { Histogram : (int * int) list }
 
     type HistogramResidual = 
-        internal {  Histogram           : (int * int) list
+        internal {  WorkingHistogram    : int list
                     OverflowMarkers     : int
                     MarkerTimestamp     : int }
 
     module Parameters =
-        let create binWidth numberOfBins : TTTRHistogramParameters = 
-            { BinWidth          = binWidth
-              NumberOfBins      = numberOfBins }
+        let internal computeNumberOfBins resolution length = 
+            int <| ((Quantities.durationNanoSeconds length) / (Quantities.durationNanoSeconds resolution))
 
-        let withResolution binWidth         (parameters: TTTRHistogramParameters) = { parameters with BinWidth = binWidth }
-        let withNumberOfBins numberOfBins   (parameters: TTTRHistogramParameters) = { parameters with NumberOfBins = numberOfBins }
+        let create resolution totalLength : TTTRHistogramParameters = 
+            { Resolution        = Quantities.durationNanoSeconds resolution
+              TotalLength       = Quantities.durationNanoSeconds totalLength
+              NumberOfBins      = computeNumberOfBins resolution totalLength }
+
+        let withResolution resolution         (parameters: TTTRHistogramParameters) = { parameters with Resolution = Quantities.durationNanoSeconds resolution; NumberOfBins = int <| ((parameters.TotalLength) / (Quantities.durationNanoSeconds resolution)) }
+        let withTotalLength totalLength       (parameters: TTTRHistogramParameters) = { parameters with TotalLength = Quantities.durationNanoSeconds totalLength;  NumberOfBins = int <| ((Quantities.durationNanoSeconds totalLength) / (parameters.Resolution)) }
 
     module internal TagHelper =
         let inline tagIdentifier (tag : Tag) : int = 
@@ -96,37 +100,53 @@ module TTTRHistogram =
             { histogramResidual with OverflowMarkers = histogramResidual.OverflowMarkers + 1 }
 
         let histogramResidualCreate timestamp = 
-            { Histogram = List.empty; OverflowMarkers = 0; MarkerTimestamp = timestamp }
+            { WorkingHistogram = List.empty; OverflowMarkers = 0; MarkerTimestamp = timestamp }
 
-        let addPhoton 
+        let inline addPhoton (histogramResidual : HistogramResidual) binNumber =
+            { histogramResidual with WorkingHistogram = binNumber :: histogramResidual.WorkingHistogram }
 
-        let histogramEndTime (histogramResidual : HistogramResidual) (parameters : TTTRHistogramParameters) tag : int option = 
-            TagHelper.timestamp tag histogram.MarkerTimestamp
+        let inline timeSinceMarker histogramResidual tag = 
+            1.0<ns> * float ((uint64 <| histogramResidual.OverflowMarkers) * TTTROverflowTime + (uint64 <| TagHelper.timestamp tag) - (uint64 histogramResidual.MarkerTimestamp)) / 4.0
 
-        let extractAllHistograms (histogramResidual : HistogramResidual option) (tagStream : TagStream) : Histogram seq * (HistogramResidual option)  =
+        let inline histogramBin (histogramResidual : HistogramResidual) (parameters : TTTRHistogramParameters) tag : int option = 
+            match (timeSinceMarker histogramResidual tag) with
+                | tagTime when tagTime < parameters.TotalLength   -> Some (tagTime / parameters.Resolution |> floor |> int)
+                | _                                               -> None
+                 
+        /// Extract all histograms from the incoming tag stream, and build them into a sequence of histograms           
+        let extractAllHistograms (parameters : TTTRHistogramParameters) (histogramResidual : HistogramResidual option) (tagStream : TagStream) : TTTRHistogramParameters * Histogram seq * (HistogramResidual option)  =
             Seq.fold (fun histogramState tag -> 
-                let (histSequence, histResidual) = histogramState
+                let (parameters, histSequence, histResidual) = histogramState
+
+                /// options for incoming tag:
+                ///     if not currently building a histogram: 
+                ///         if a marker, start new histogram
+                ///         if not, ignore
+                ///     if in a histogram:
+                ///         if it's a photon:
+                ///             if within the total histogram time, add the photon
+                ///             else, this is the first record since the end of the previous histogram --- write the histogram to sequence
+                ///         if it's an overflow:
+                ///             increment the overflow counter
+                ///         if it's a marker:
+                ///             if the marker is the first record since the end of the previous histogram, start a new one
+                ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
                 match histResidual, tag with
-                    | None, tag when not <| TagHelper.isMarker tag -> histogramState
-                    | None, tag                                    -> (histSequence, Some <| histogramResidualCreate TagHelper.timestamp tag)
-                    | Some residual, tag when TagHelper.timestamp * res
-                    | Some residual, tag when TagHelper.isPhoton -> 
-                        
-                        
+                    | None, tag when not <| TagHelper.isMarker tag   -> histogramState
+                    | None, tag                                      -> (parameters, histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                    | Some residual, tag when TagHelper.isPhoton tag -> 
+                        match (histogramBin residual parameters tag) with
+                            | Some bin                      -> (parameters, histSequence, Some <| (addPhoton residual bin))
+                            | None                          -> (parameters, Seq.appendSingleton { Histogram = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList) } histSequence, None)
                     | Some residual, tag when TagHelper.isTimeOverflow tag -> 
-                        (histSequence, Some <| incrementTimeOverflowMarkers histResidual)
-                    
-                    | Some residual, tag when TagHelper.isMarker tag -> 
-                        
-                        failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?"
+                        (parameters, histSequence, Some <| incrementTimeOverflowMarkers residual)
+                    /// edge case: no photons since end of last histogram; next event is a marker - shouldn't cause an error
+                    | Some residual, tag when TagHelper.isMarker tag && histogramBin residual parameters tag = None -> 
+                        (parameters, histSequence, Some <| (histogramResidualCreate <| TagHelper.timestamp tag))
+                    /// should only get here if there is residual, and the tag is a marker - this should cause an error!
+                    | _ ->  failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?"
 
-
-                if histResidual.IsNone && not <| TagHelper.isMarker then
-                    histogramState
-                else
-                    
-                
-                ) (Seq.empty, histogramResidual) (tagStream.Tags)
+            ) (parameters, Seq.empty, histogramResidual) (tagStream.Tags)
                         
 
      module internal HistogramEvent = 
