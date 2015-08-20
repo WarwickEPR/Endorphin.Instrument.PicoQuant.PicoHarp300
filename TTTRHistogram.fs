@@ -23,7 +23,8 @@ module TTTRHistogram =
         | FailedStream of error : string
         | CancelledStream of exn : OperationCanceledException
 
-    type private TagStream = { Tags : seq<Tag> }
+    type internal TagStream = { Tags                 : seq<Tag>
+                                HistogramParameters  : TTTRHistogramParameters }
 
     type HistogramAcquisition = 
         private { Parameters            : TTTRHistogramParameters
@@ -37,35 +38,96 @@ module TTTRHistogram =
         private { Acquisition   : HistogramAcquisition
                   WaitToFinish  : AsyncChoice<unit, string> }
 
-    type Histogram = unit
+    /// List of bin number and number of counts in bin
+    type Histogram = { Histogram : (int * int) list }
+
+    type HistogramResidual = 
+        internal {  Histogram           : (int * int) list
+                    OverflowMarkers     : int
+                    MarkerTimestamp     : int }
 
     module Parameters =
-        let create binWidth numberOfBins = 
+        let create binWidth numberOfBins : TTTRHistogramParameters = 
             { BinWidth          = binWidth
               NumberOfBins      = numberOfBins }
 
         let withResolution binWidth         (parameters: TTTRHistogramParameters) = { parameters with BinWidth = binWidth }
         let withNumberOfBins numberOfBins   (parameters: TTTRHistogramParameters) = { parameters with NumberOfBins = numberOfBins }
 
-    module internal StreamReader =
-        type TagRecord =
-            | Photon of channel : int * time : int
-            | Marker
-            | TimeOverflow
+    module internal TagHelper =
+        let inline tagIdentifier (tag : Tag) : int = 
+            ((tag >>> 28 ) &&& 0xF)     
 
+        let inline isPhoton identifier =
+            identifier < 2
+
+        let inline timestamp (tag : Tag) : int =
+            tag &&& 0x0FFFFFFFF
+
+        let inline isTimeOverflow (tag : Tag) = 
+            ((tag >>> 28) &&& 0xF) = 15 && (tag &&& 0xF) = 0
+
+        let inline isMarker (tag : Tag) = 
+            ((tag >>> 28) &&& 0xF) = 15 && (tag &&& 0xF) <> 0
+
+    module internal TagStreamReader =
         /// Identify the incoming record as a photon, overflow
         /// or marker record.
-        let identifyRecord record =
+        let (| Photon | TimeOverflow | Marker |) tag =
             /// The channel number (0 - 3 for photons; 15 for markers including overflow)
             /// is held in the 4 highest significance bits.
-            /// Currently, there is no distinction 
-            /// between the different marker records - all marker channels
-            /// are treated identically as simply a "marker".
-            match ((record >>> 28) &&& 0xF) with
-                | channel when channel < 2                              -> Photon (channel, record &&& 0x0FFFFFFFF)
+            /// Currently, there is no distinction between the different marker records
+            ///  - all marker channels are treated identically as simply a "marker".
+            match ((tag >>> 28) &&& 0xF) with
+                | channel when channel < 2                              -> Photon (channel, tag &&& 0x0FFFFFFFF)
                 | marker when (marker = 15) && (marker &&& 0xF) = 0     -> TimeOverflow
                 | marker when marker = 15                               -> Marker
                 | other                                                 -> failwith "Unexpected time-tagged record identified: %d." other
+(*
+        let extractNextHistogram (tagStream : TagStream) = 
+            /// find the first marker position in the stream; don't process any further if there isn't one
+            let streamFromMarkerPosition = Seq.skipWhile (fun tag -> not <| TagHelper.isMarker tag) tagStream.Tags
+            
+            if not <| Seq.isEmpty streamFromMarkerPosition then
+                let startTimestamp = TagHelper.getTimestamp <| Seq.head streamFromMarkerPosition
+                Seq.*)
+
+        let incrementTimeOverflowMarkers histogramResidual =
+            { histogramResidual with OverflowMarkers = histogramResidual.OverflowMarkers + 1 }
+
+        let histogramResidualCreate timestamp = 
+            { Histogram = List.empty; OverflowMarkers = 0; MarkerTimestamp = timestamp }
+
+        let addPhoton 
+
+        let histogramEndTime (histogramResidual : HistogramResidual) (parameters : TTTRHistogramParameters) tag : int option = 
+            TagHelper.timestamp tag histogram.MarkerTimestamp
+
+        let extractAllHistograms (histogramResidual : HistogramResidual option) (tagStream : TagStream) : Histogram seq * (HistogramResidual option)  =
+            Seq.fold (fun histogramState tag -> 
+                let (histSequence, histResidual) = histogramState
+                match histResidual, tag with
+                    | None, tag when not <| TagHelper.isMarker tag -> histogramState
+                    | None, tag                                    -> (histSequence, Some <| histogramResidualCreate TagHelper.timestamp tag)
+                    | Some residual, tag when TagHelper.timestamp * res
+                    | Some residual, tag when TagHelper.isPhoton -> 
+                        
+                        
+                    | Some residual, tag when TagHelper.isTimeOverflow tag -> 
+                        (histSequence, Some <| incrementTimeOverflowMarkers histResidual)
+                    
+                    | Some residual, tag when TagHelper.isMarker tag -> 
+                        
+                        failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?"
+
+
+                if histResidual.IsNone && not <| TagHelper.isMarker then
+                    histogramState
+                else
+                    
+                
+                ) (Seq.empty, histogramResidual) (tagStream.Tags)
+                        
 
      module internal HistogramEvent = 
         type HistogramEvent = 
@@ -84,20 +146,9 @@ module TTTRHistogram =
             let (markerStream, photonStream) = 
                 input.Publish
                 |> Observable.observeOn eventScheduler //need to extract elements from sequence!
-                |> Observable.map (fun record -> StreamReader.identifyRecord record)
-                |> Observable.foldMap
-                |> Observable.collect
-                |> Observable.groupBy (fun record -> function
-                    | StreamReader.TagRecord.Marker -> true
-                    | _                             -> false)
-                |> Observable.partition (function 
-                    | StreamReader.TagRecord.Marker    -> true
-                    | _                                -> false)
-
-            
-
-            let output = 
-                           
+                |> Observable.foldMap //folding stream (see paper); map ==> ignores hist. res
+                |> Observable.collectSeq // fire event for each histogram
+                                     
             { Trigger = input.Trigger ; Publish = output }
            
     module Acquisition = 
@@ -131,7 +182,7 @@ module TTTRHistogram =
             acquisition.StreamingBuffer.Buffer.CopyTo (buffer, 0)
             
             let tagSequence = Seq.ofArray buffer
-            acquisition.EventsAvailable.Trigger { Tags = tagSequence; Length = counts }
+            acquisition.EventsAvailable.Trigger { Tags = tagSequence; BinWidth = acquisition.Parameters.BinWidth; NumberOfBins = acquisition.Parameters.NumberOfBins }
 
         let rec private pollUntilFinished acquisition = asyncChoice {
             if not acquisition.StopCapability.IsCancellationRequested then
