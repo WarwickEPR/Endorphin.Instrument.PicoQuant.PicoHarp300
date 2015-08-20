@@ -9,6 +9,7 @@ open Endorphin.Core.NationalInstruments
 open Endorphin.Core.String
 open ExtCore.Control
 open System
+open FSharp.Control.Reactive
 
 module TTTRHistogram = 
     type StreamStopOptions = { AcquisitionDidAutoStop : bool }
@@ -61,10 +62,35 @@ module TTTRHistogram =
 
         let create = 
             let input = new Event<_>()
-            let output = input .Publish|> Event.map ignore // TODO : implement processing here
-            
+            let output = 
+                input.Publish
+                |> Observable.observeOn (new System.Reactive.Concurrency.EventLoopScheduler()) 
+                |> Observable.map 
+                
+                           
             { Trigger = input.Trigger ; Publish = output }
+
+    module internal StreamReader =
+        let (| Photon | Marker | Overflow |) = 
             
+
+        /// Identify the incoming record as a photon, overflow
+        /// or marker record. Currently, there is no distinction 
+        /// between the different marker records - all marker channels
+        /// are treated identically as simply a "marker".
+        let identifyRecord record = 
+            match extractIdentifier record with
+            | var1 when var1 < 2                        -> Photon
+            | var1 when var1 == 15 && (var1 & 0xF) == 0 -> Overflow
+            | var1 when var1 == 15                      -> Marker
+
+
+        /// Extract channel identifier from time-tagged record
+        let extractIdentifier record = 
+            /// The channel number (0 - 3 for photons; 15 for markers including overflow)
+            /// is held in the 4 highest significance bits
+            (record >> 28) & 0xF
+
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
         
