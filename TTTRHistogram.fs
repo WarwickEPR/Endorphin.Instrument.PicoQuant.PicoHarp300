@@ -39,16 +39,32 @@ module TTTRHistogram =
     type Histogram = unit
 
     module Parameters =
-        let create resolution numberOfBins acquisitionTime markerChannel = 
-            { Resolution        = resolution
-              NumberOfBins      = numberOfBins
-              AcquisitionTime   = acquisitionTime
-              MarkerChannel     = markerChannel }
+        let create binWidth numberOfBins = 
+            { BinWidth          = binWidth
+              NumberOfBins      = numberOfBins }
 
-        let withResolution resolution           (parameters: TTTRHistogramParameters) = { parameters with Resolution = resolution }
-        let withNumberOfBins numberOfBins       (parameters: TTTRHistogramParameters) = { parameters with NumberOfBins = numberOfBins }
-        let withAcquisitionTime acquisitionTime (parameters: TTTRHistogramParameters) = { parameters with AcquisitionTime = acquisitionTime }
-        let withMarkerChannel markerChannel     (parameters: TTTRHistogramParameters) = { parameters with MarkerChannel = markerChannel }
+        let withResolution binWidth         (parameters: TTTRHistogramParameters) = { parameters with BinWidth = binWidth }
+        let withNumberOfBins numberOfBins   (parameters: TTTRHistogramParameters) = { parameters with NumberOfBins = numberOfBins }
+     
+    module internal StreamReader =
+        type TagRecord =
+            | Photon of channel : int * time : int
+            | Marker
+            | TimeOverflow
+
+        /// Identify the incoming record as a photon, overflow
+        /// or marker record.
+        let identifyRecord record =
+            /// The channel number (0 - 3 for photons; 15 for markers including overflow)
+            /// is held in the 4 highest significance bits.
+            /// Currently, there is no distinction 
+            /// between the different marker records - all marker channels
+            /// are treated identically as simply a "marker".
+            match ((record >>> 28) &&& 0xF) with
+                | channel when channel < 2                              -> Photon (channel, record &&& 0x0FFFFFFFF)
+                | marker when (marker = 15) && (marker &&& 0xF) = 0     -> TimeOverflow
+                | marker when marker = 15                               -> Marker
+                | other                                                 -> failwith "Unexpected time-tagged record identified: %d." other
 
      module internal HistogramEvent = 
         type HistogramEvent = 
@@ -65,32 +81,14 @@ module TTTRHistogram =
             let output = 
                 input.Publish
                 |> Observable.observeOn (new System.Reactive.Concurrency.EventLoopScheduler()) 
-                |> Observable.map 
+                |> Observable.map (fun record -> StreamReader.identifyRecord record)
+                |> Observable.partition (function 
+                    | StreamReader.TagRecord.Marker    -> true
+                    | _                                -> false)
                 
                            
             { Trigger = input.Trigger ; Publish = output }
-
-    module internal StreamReader =
-        let (| Photon | Marker | Overflow |) = 
-            
-
-        /// Identify the incoming record as a photon, overflow
-        /// or marker record. Currently, there is no distinction 
-        /// between the different marker records - all marker channels
-        /// are treated identically as simply a "marker".
-        let identifyRecord record = 
-            match extractIdentifier record with
-            | var1 when var1 < 2                        -> Photon
-            | var1 when var1 == 15 && (var1 & 0xF) == 0 -> Overflow
-            | var1 when var1 == 15                      -> Marker
-
-
-        /// Extract channel identifier from time-tagged record
-        let extractIdentifier record = 
-            /// The channel number (0 - 3 for photons; 15 for markers including overflow)
-            /// is held in the 4 highest significance bits
-            (record >> 28) & 0xF
-
+           
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
         

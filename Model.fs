@@ -80,23 +80,14 @@ module Model =
     [<AutoOpen>]
     module SetupTTTRMeasurements = 
             
-        /// Possible marker channels which can be recorded in the TTTR stream
-        type MarkerChannel = 
-            | MarkerChannel_0
-            | MarkerChannel_1
-            | MarkerChannel_2
-            | MarkerChannel_3
-  
         /// Maximum number of events that the PicoHarp can return during any one USB transfer
         [<Literal>]
         let internal TTTRMaxEvents = 131072
         
         /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
         type TTTRHistogramParameters = 
-            internal { Resolution        : Resolution
-                       NumberOfBins      : int
-                       AcquisitionTime   : Duration
-                       MarkerChannel     : MarkerChannel }
+            internal { BinWidth          : Duration
+                       NumberOfBins      : int }
 
         /// Buffer to hold the results of each streaming event
         type StreamingBuffer = 
