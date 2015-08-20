@@ -274,6 +274,16 @@ module PicoHarp =
             |> checkStatusAndReturn (counts)
             |> AsyncChoice.liftChoice
     
+        let checkMeasurementFinished picoHarp300 =
+            let mutable result = 0
+            logDevice picoHarp300 "Checking whether acquisition has finished."
+            NativeApi.CTCStatus (index picoHarp300, &result)
+            |> checkStatusAndReturn (result <> 0)
+            |> logQueryResult
+                (sprintf "Successfully checked acquisition finished: %A.")
+                (sprintf "Failed to check acquisition status due to error: %A.")
+            |> AsyncChoice.liftChoice
+
         /// Stops a measurement 
         let stop picoHarp300 = 
             logDevice picoHarp300 "Ceasing measurement."
