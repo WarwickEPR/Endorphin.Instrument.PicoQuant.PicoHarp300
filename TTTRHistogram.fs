@@ -12,6 +12,8 @@ open System
 open FSharp.Control.Reactive
 
 module TTTRHistogram = 
+    type private Tag = int
+
     type StreamStopOptions = { AcquisitionDidAutoStop : bool }
 
     type StreamStatus = 
@@ -21,8 +23,7 @@ module TTTRHistogram =
         | FailedStream of error : string
         | CancelledStream of exn : OperationCanceledException
 
-    type EventStream = 
-        private { Events : int[] }
+    type private TagStream = { Tags : seq<Tag> }
 
     type HistogramAcquisition = 
         private { Parameters            : TTTRHistogramParameters
@@ -30,7 +31,7 @@ module TTTRHistogram =
                   PicoHarp              : PicoHarp300
                   StopCapability        : CancellationCapability<StreamStopOptions>
                   StatusChanged         : Event<StreamStatus>
-                  EventsAvailable       : Event<EventStream> }
+                  EventsAvailable       : Event<TagStream> }
 
     type HistogramAcquisitionHandle = 
         private { Acquisition   : HistogramAcquisition
@@ -45,7 +46,7 @@ module TTTRHistogram =
 
         let withResolution binWidth         (parameters: TTTRHistogramParameters) = { parameters with BinWidth = binWidth }
         let withNumberOfBins numberOfBins   (parameters: TTTRHistogramParameters) = { parameters with NumberOfBins = numberOfBins }
-     
+
     module internal StreamReader =
         type TagRecord =
             | Photon of channel : int * time : int
@@ -68,7 +69,7 @@ module TTTRHistogram =
 
      module internal HistogramEvent = 
         type HistogramEvent = 
-            private { Trigger   : EventStream -> unit
+            private { Trigger   : TagStream -> unit
                       Publish   : IObservable<Histogram> }
         
         let trigger event = event.Trigger
@@ -77,15 +78,25 @@ module TTTRHistogram =
             event.Publish
 
         let create = 
+            let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()
             let input = new Event<_>()
-            let output = 
+
+            let (markerStream, photonStream) = 
                 input.Publish
-                |> Observable.observeOn (new System.Reactive.Concurrency.EventLoopScheduler()) 
+                |> Observable.observeOn eventScheduler //need to extract elements from sequence!
                 |> Observable.map (fun record -> StreamReader.identifyRecord record)
+                |> Observable.foldMap
+                |> Observable.collect
+                |> Observable.groupBy (fun record -> function
+                    | StreamReader.TagRecord.Marker -> true
+                    | _                             -> false)
                 |> Observable.partition (function 
                     | StreamReader.TagRecord.Marker    -> true
                     | _                                -> false)
-                
+
+            
+
+            let output = 
                            
             { Trigger = input.Trigger ; Publish = output }
            
@@ -98,7 +109,7 @@ module TTTRHistogram =
               PicoHarp = picoHarp
               StopCapability = new CancellationCapability<StreamStopOptions>()
               StatusChanged = new Event<StreamStatus>()
-              EventsAvailable = new Event<EventStream>() }
+              EventsAvailable = new Event<TagStream>() }
         
         let status acquisition =
             acquisition.StatusChanged.Publish
@@ -118,8 +129,9 @@ module TTTRHistogram =
         let private copyBufferAndFireEvent acquisition counts =
             let buffer = Array.zeroCreate counts
             acquisition.StreamingBuffer.Buffer.CopyTo (buffer, 0)
-
-            acquisition.EventsAvailable.Trigger { Events = buffer }
+            
+            let tagSequence = Seq.ofArray buffer
+            acquisition.EventsAvailable.Trigger { Tags = tagSequence; Length = counts }
 
         let rec private pollUntilFinished acquisition = asyncChoice {
             if not acquisition.StopCapability.IsCancellationRequested then
