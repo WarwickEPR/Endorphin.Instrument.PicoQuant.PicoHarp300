@@ -88,7 +88,7 @@ module Model =
         let internal TTTROverflowTime = 210698240UL
         
         /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
-        type TTTRHistogramParameters = 
+        type StreamingParameters = 
             internal { Resolution        : float<ns>
                        TotalLength       : float<ns>
                        NumberOfBins      : int }

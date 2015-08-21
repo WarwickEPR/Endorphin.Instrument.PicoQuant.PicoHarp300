@@ -11,7 +11,7 @@ open ExtCore.Control
 open System
 open FSharp.Control.Reactive
 
-module TTTRHistogram = 
+module Streaming = 
     type private Tag = int
 
     type StreamStopOptions = { AcquisitionDidAutoStop : bool }
@@ -24,10 +24,10 @@ module TTTRHistogram =
         | CancelledStream of exn : OperationCanceledException
 
     type internal TagStream = { Tags                 : seq<Tag>
-                                HistogramParameters  : TTTRHistogramParameters }
+                                HistogramParameters  : StreamingParameters }
 
-    type HistogramAcquisition = 
-        private { Parameters          : TTTRHistogramParameters
+    type StreamingAcquisition = 
+        private { Parameters          : StreamingParameters
                   StreamingBuffer     : StreamingBuffer
                   PicoHarp            : PicoHarp300
                   StopCapability      : CancellationCapability<StreamStopOptions>
@@ -35,7 +35,7 @@ module TTTRHistogram =
                   TagsAvailable       : Event<TagStream> }
 
     type HistogramAcquisitionHandle = 
-        private { Acquisition   : HistogramAcquisition
+        private { Acquisition   : StreamingAcquisition
                   WaitToFinish  : AsyncChoice<unit, string> }
 
     /// List of bin number and number of counts in bin
@@ -50,13 +50,13 @@ module TTTRHistogram =
         let internal computeNumberOfBins resolution length = 
             int <| ((Quantities.durationNanoSeconds length) / (Quantities.durationNanoSeconds resolution))
 
-        let create resolution totalLength : TTTRHistogramParameters = 
+        let create resolution totalLength : StreamingParameters = 
             { Resolution        = Quantities.durationNanoSeconds resolution
               TotalLength       = Quantities.durationNanoSeconds totalLength
               NumberOfBins      = computeNumberOfBins resolution totalLength }
 
-        let withResolution resolution         (parameters: TTTRHistogramParameters) = { parameters with Resolution = Quantities.durationNanoSeconds resolution; NumberOfBins = int <| ((parameters.TotalLength) / (Quantities.durationNanoSeconds resolution)) }
-        let withTotalLength totalLength       (parameters: TTTRHistogramParameters) = { parameters with TotalLength = Quantities.durationNanoSeconds totalLength;  NumberOfBins = int <| ((Quantities.durationNanoSeconds totalLength) / (parameters.Resolution)) }
+        let withResolution resolution         (parameters: StreamingParameters) = { parameters with Resolution = Quantities.durationNanoSeconds resolution; NumberOfBins = int <| ((parameters.TotalLength) / (Quantities.durationNanoSeconds resolution)) }
+        let withTotalLength totalLength       (parameters: StreamingParameters) = { parameters with TotalLength = Quantities.durationNanoSeconds totalLength;  NumberOfBins = int <| ((Quantities.durationNanoSeconds totalLength) / (parameters.Resolution)) }
 
     /// module for manipulating the tags from the PicoHarp
     module internal TagHelper =
@@ -88,13 +88,13 @@ module TTTRHistogram =
         let inline timeSinceMarker histogramResidual tag = 
             1.0<ns> * float ((uint64 <| histogramResidual.OverflowMarkers) * TTTROverflowTime + (uint64 <| TagHelper.timestamp tag) - (uint64 histogramResidual.MarkerTimestamp)) / 4.0
 
-        let inline histogramBin (histogramResidual : HistogramResidual) (parameters : TTTRHistogramParameters) tag : int option = 
+        let inline histogramBin (histogramResidual : HistogramResidual) (parameters : StreamingParameters) tag : int option = 
             match (timeSinceMarker histogramResidual tag) with
                 | tagTime when tagTime < parameters.TotalLength   -> Some (tagTime / parameters.Resolution |> floor |> int)
                 | _                                               -> None
                  
         /// Extract all histograms from the incoming tag stream, and build them into a sequence of histograms           
-        let extractAllHistograms (parameters : TTTRHistogramParameters) (histogramResidual : HistogramResidual option) (tagStream : TagStream) =
+        let extractAllHistograms (parameters : StreamingParameters) (histogramResidual : HistogramResidual option) (tagStream : TagStream) =
             Seq.fold (fun histogramState tag -> 
                 let (histSequence, histResidual) = histogramState
 
@@ -243,6 +243,16 @@ module TTTRHistogram =
                 return { Acquisition = acquisition ; WaitToFinish = waitToFinish } }
             |> AsyncChoice.liftAsync
         
+        let waitToFinish acquisitionHandle = acquisitionHandle.WaitToFinish   
+              
+        let stop acquisitionHandle =
+            if not acquisitionHandle.Acquisition.StopCapability.IsCancellationRequested then
+                acquisitionHandle.Acquisition.StopCapability.Cancel { AcquisitionDidAutoStop = false }
+
+        let stopAndFinish acquisitionHandle =
+            stop acquisitionHandle
+            waitToFinish acquisitionHandle
+
         /// Alert when new histograms are available
         let HistogramsAvailable acquisition = 
             let histAvailable = HistogramEvent.create acquisition

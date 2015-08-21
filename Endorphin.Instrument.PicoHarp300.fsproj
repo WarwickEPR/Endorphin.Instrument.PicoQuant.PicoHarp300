@@ -8,7 +8,7 @@
     <ProjectGuid>cae4252b-663b-42a9-8353-fc4617827a3b</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Library1</RootNamespace>
-    <AssemblyName>PicoHarp300</AssemblyName>
+    <AssemblyName>Endorphin.Instrument.PicoHarp300</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <Name>Endorphin.Instrument.PicoHarp300</Name>
@@ -59,7 +59,7 @@
     <Compile Include="Quantities.fs" />
     <Compile Include="PicoHarp300.fs" />
     <Compile Include="Histogram.fs" />
-    <Compile Include="TTTRHistogram.fs" />
+    <Compile Include="Streaming.fs" />
     <None Include="HistogramMeasurement.fsx" />
     <None Include="LiveCounts.fsx" />
     <None Include="LiveHistogram.fsx" />
@@ -68,6 +68,7 @@
     <None Include="LiveCountsBothChannels.fsx" />
     <None Include="packages.config" />
     <Content Include="app.config" />
+    <None Include="StreamingDemo.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ExtCore">
