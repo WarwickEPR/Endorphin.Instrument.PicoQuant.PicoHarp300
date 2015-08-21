@@ -28,27 +28,26 @@ let group_fold key value fold acc seq =
         |> List.map (fun (key, seq) -> (key, seq |> List.map value |> List.fold fold acc))
 
 let collateCounts (histogramList : (int * int) list) (histogram : (int * int) list) =
-    if not (List.isEmpty histogramList) then
-        group_fold fst snd (+) 0 <| List.append histogramList histogram
-    else 
-        group_fold fst snd (+) 0 histogram
+    match histogramList with
+    | [] -> group_fold fst snd (+) 0 histogram
+    | histogramList -> group_fold fst snd (+) 0 <| List.append histogramList histogram
 
-let showHistogramChart acquisition = async {
+let showHistogramChart acquisition = AsyncChoice.liftAsync <| async {
     do! Async.SwitchToContext uiContext
 
     let chart = 
-            Streaming.Acquisition.HistogramsAvailable acquisition
-            |> Observable.observeOnContext uiContext
-            |> Observable.map (fun (histogram) -> List.map (fun (bin, counts) -> (10*bin, counts)) <| histogram.Histogram)
-            //|> Observable.scan collateCounts List.empty
-            |> LiveChart.Column
-            |> Chart.WithXAxis(Title = "Time after marker (ns)")
-            |> Chart.WithYAxis(Title = "Counts")
+        Streaming.Acquisition.HistogramsAvailable acquisition
+        |> Observable.observeOnContext uiContext
+        |> Observable.map (fun (histogram) -> List.map (fun (bin, counts) -> (10*bin, counts)) <| histogram.Histogram)
+        |> Observable.scan collateCounts
+        |> LiveChart.Column
+        |> Chart.WithXAxis(Title = "Time after marker (ns)")
+        |> Chart.WithYAxis(Title = "Counts")
 
     new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
     |> form.Controls.Add
 
-    do! Async.SwitchToThreadPool() } |> AsyncChoice.liftAsync
+    do! Async.SwitchToThreadPool() }  
 
 let printStatusUpdates acquisition =
     Streaming.Acquisition.status acquisition
