@@ -95,7 +95,7 @@ module Model =
 
         /// Buffer to hold the results of each streaming event
         type StreamingBuffer = 
-            internal { Buffer    : int[] }
+            internal { Buffer    : uint32[] }
 
     /// Channel 1 is used as a sync input for time resolved fluorescence with a pulsed exitation source.
     /// For correlation experiments ignore the sync settings. 

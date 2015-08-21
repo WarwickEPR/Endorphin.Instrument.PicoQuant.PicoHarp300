@@ -94,9 +94,9 @@ module Histogram =
 
     /// Clears the histogram from picoHarps memory
     /// The argument block will always be zero unless routing is used. 
-    let clearmemory picoHarp300 block =    
+    let clearmemory picoHarp300 =    
         PicoHarp.logDevice picoHarp300 "Clearing histogram data from device memory."
-        NativeApi.ClearHistMem (PicoHarp.index picoHarp300, block)
+        NativeApi.ClearHistMem (PicoHarp.index picoHarp300, 0)
         |> PicoHarp.checkStatus
         |> PicoHarp.logDeviceOpResult picoHarp300
             ("Cleared histogram data from device memory.")
@@ -105,7 +105,7 @@ module Histogram =
     
     /// Ties together functions needed to take a single measurement 
     let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = asyncChoice{ 
-        let! clear     = clearmemory picoHarp300 0 
+        let! clear     = clearmemory picoHarp300
         let! bin       = setBinning picoHarp300 histogram
         let! overflow  = stopOverflow picoHarp300 histogram
         let! startMeas = startMeasurement picoHarp300 histogram  

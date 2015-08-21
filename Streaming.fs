@@ -12,7 +12,7 @@ open System
 open FSharp.Control.Reactive
 
 module Streaming = 
-    type private Tag = int
+    type private Tag = uint32
 
     type StreamStopOptions = { AcquisitionDidAutoStop : bool }
 
@@ -44,7 +44,7 @@ module Streaming =
     type internal HistogramResidual =
                  {  WorkingHistogram    : int list
                     OverflowMarkers     : int
-                    MarkerTimestamp     : int }
+                    MarkerTimestamp     : uint32 }
 
     module Parameters =
         let internal computeNumberOfBins resolution length = 
@@ -60,20 +60,17 @@ module Streaming =
 
     /// module for manipulating the tags from the PicoHarp
     module internal TagHelper =
-        let inline tagIdentifier (tag : Tag) : int = 
-            ((tag >>> 28 ) &&& 0xF)     
+        let inline isPhoton (tag : Tag) =
+            ((tag >>> 28 ) &&& 0xFu) < 2u
 
-        let inline isPhoton identifier =
-            identifier < 2
-
-        let inline timestamp (tag : Tag) : int =
-            tag &&& 0x0FFFFFFFF
+        let inline timestamp (tag : Tag) =
+            tag &&& 0x0FFFFFFFu
 
         let inline isTimeOverflow (tag : Tag) = 
-            ((tag >>> 28) &&& 0xF) = 15 && (tag &&& 0xF) = 0
+            ((tag >>> 28) &&& 0xFu) = 15u && (tag &&& 0xFu) = 0u
 
         let inline isMarker (tag : Tag) = 
-            ((tag >>> 28) &&& 0xF) = 15 && (tag &&& 0xF) <> 0
+            ((tag >>> 28) &&& 0xFu) = 15u && (tag &&& 0xFu) <> 0u
 
     module internal TagStreamReader =
         let incrementTimeOverflowMarkers histogramResidual =
@@ -86,7 +83,7 @@ module Streaming =
             { histogramResidual with WorkingHistogram = binNumber :: histogramResidual.WorkingHistogram }
 
         let inline timeSinceMarker histogramResidual tag = 
-            1.0<ns> * float ((uint64 <| histogramResidual.OverflowMarkers) * TTTROverflowTime + (uint64 <| TagHelper.timestamp tag) - (uint64 histogramResidual.MarkerTimestamp)) / 4.0
+            4.0<ps> * nanosecondsPerPicosecond * float ((uint64 histogramResidual.OverflowMarkers) * TTTROverflowTime + (uint64 <| TagHelper.timestamp tag) - (uint64 histogramResidual.MarkerTimestamp))
 
         let inline histogramBin (histogramResidual : HistogramResidual) (parameters : StreamingParameters) tag : int option = 
             match (timeSinceMarker histogramResidual tag) with
@@ -95,47 +92,43 @@ module Streaming =
                  
         /// Extract all histograms from the incoming tag stream, and build them into a sequence of histograms           
         let extractAllHistograms (parameters : StreamingParameters) (histogramResidual : HistogramResidual option) (tagStream : TagStream) =
-            Seq.fold (fun histogramState tag -> 
-                let (histSequence, histResidual) = histogramState
-
-                /// options for incoming tag:
-                ///     if not currently building a histogram: 
-                ///         if a marker, start new histogram
-                ///         if not, ignore
-                ///     if in a histogram:
-                ///         if it's a photon:
-                ///             if within the total histogram time, add the photon
-                ///             else, this is the first record since the end of the previous histogram --- write the histogram to sequence
-                ///         if it's an overflow:
-                ///             increment the overflow counter
-                ///         if it's a marker:
-                ///             if the marker is the first record since the end of the previous histogram, start a new one
-                ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
-                match histResidual, tag with
-                    | None, tag when not <| TagHelper.isMarker tag   -> histogramState
-                    | None, tag                                      -> (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
-                    | Some residual, tag when TagHelper.isPhoton tag -> 
-                        match (histogramBin residual parameters tag) with
-                            | Some bin                      -> (histSequence, Some <| (addPhoton residual bin))
-                            | None                          -> (Seq.appendSingleton { Histogram = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList) } histSequence, None)
-                    | Some residual, tag when TagHelper.isTimeOverflow tag -> 
-                        (histSequence, Some <| incrementTimeOverflowMarkers residual)
-                    | Some residual, tag when TagHelper.isMarker tag && (histogramBin residual parameters tag) = None -> 
-                        (histSequence, Some <| (histogramResidualCreate <| TagHelper.timestamp tag))
-                    /// should only get here if there is residual, and the tag is a marker - this should cause an error!
-                    | _ ->  failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?"
-
-            ) (Seq.empty, histogramResidual) (tagStream.Tags)         
+            let result = 
+                tagStream.Tags
+                |> Seq.fold (fun histogramState tag -> 
+                    let (histSequence, histResidual) = histogramState
+                    /// options for incoming tag:
+                    ///     if not currently building a histogram: 
+                    ///         if a marker, start new histogram
+                    ///         if not, ignore
+                    ///     if in a histogram:
+                    ///         if it's a photon:
+                    ///             if within the total histogram time, add the photon
+                    ///             else, this is the first record since the end of the previous histogram --- write the histogram to sequence
+                    ///         if it's an overflow:
+                    ///             increment the overflow counter
+                    ///         if it's a marker:
+                    ///             if the marker is the first record since the end of the previous histogram, start a new one
+                    ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
+                    match histResidual, tag with
+                        | None, tag when not <| TagHelper.isMarker tag   -> histogramState
+                        | None, tag                                      -> (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                        | Some residual, tag when TagHelper.isPhoton tag -> 
+                            match (histogramBin residual parameters tag) with
+                                | Some bin                      -> (histSequence, Some <| (addPhoton residual bin))
+                                | None                          -> 
+                                    let h = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList)
+                                    (Seq.appendSingleton { Histogram = h } histSequence, None)
+                        | Some residual, tag when TagHelper.isTimeOverflow tag -> 
+                            (histSequence, Some <| incrementTimeOverflowMarkers residual)
+                        | Some residual, tag when TagHelper.isMarker tag && (histogramBin residual parameters tag) = None -> 
+                            (Seq.appendSingleton { Histogram = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList) } histSequence, Some <| (histogramResidualCreate <| TagHelper.timestamp tag))
+                        /// should only get here if there is residual, and the tag is a marker - this should cause an error!
+                        | _ ->  failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (Seq.empty, histogramResidual)
+            result
 
      module internal HistogramEvent = 
         type HistogramEvent = 
-            internal {  Trigger   : TagStream -> unit
-                        Publish   : IObservable<Histogram> }
-        
-        let trigger event = event.Trigger
-
-        let available event = 
-            event.Publish
+            internal {  Output   : IObservable<Histogram> }
 
         let create acquisition = 
             let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()
@@ -144,12 +137,13 @@ module Streaming =
             let output = 
                 input.Publish
                 |> Observable.observeOn eventScheduler 
-                |> Observable.foldMap (fun (_,residual) tagStream ->
+                |> Observable.scanInit (Seq.empty, None) (fun (_,residual) tagStream ->
                      TagStreamReader.extractAllHistograms acquisition.Parameters residual tagStream
-                    ) (Seq.empty, None) (fun (histograms, _) -> histograms) // pass each new tag stream and previous residual into the processing function
+                    )  // pass each new tag stream and previous residual into the processing function
+                |> Observable.map (fun f -> fst f)
                 |> Observable.collectSeq id // fire event for each histogram
-                                    
-            { Trigger = input.Trigger ; Publish = output }
+              
+            { Output = output }
            
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
@@ -178,8 +172,7 @@ module Streaming =
     
         let private copyBufferAndFireEvent acquisition counts =
             let buffer = Array.zeroCreate counts
-            acquisition.StreamingBuffer.Buffer.CopyTo (buffer, 0)
-            
+            Array.blit acquisition.StreamingBuffer.Buffer 0 buffer 0 counts
             let tagSequence = Seq.ofArray buffer
             acquisition.TagsAvailable.Trigger { Tags = tagSequence; HistogramParameters = acquisition.Parameters }
 
@@ -256,4 +249,4 @@ module Streaming =
         /// Alert when new histograms are available
         let HistogramsAvailable acquisition = 
             let histAvailable = HistogramEvent.create acquisition
-            histAvailable.Publish
+            histAvailable.Output
