@@ -111,7 +111,7 @@ module Streaming =
                     ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
                     match histResidual, tag with
                         | None, tag when not <| TagHelper.isMarker tag   -> histogramState
-                        | None, tag                                      -> (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                        | None, tag                                      -> printfn "GOT A TRIGGER"; (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
                         | Some residual, tag when TagHelper.isPhoton tag -> 
                             match (histogramBin residual parameters tag) with
                                 | Some bin                      -> (histSequence, Some <| (addPhoton residual bin))
@@ -123,7 +123,7 @@ module Streaming =
                         | Some residual, tag when TagHelper.isMarker tag && (histogramBin residual parameters tag) = None -> 
                             (Seq.appendSingleton { Histogram = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList) } histSequence, Some <| (histogramResidualCreate <| TagHelper.timestamp tag))
                         /// should only get here if there is residual, and the tag is a marker - this should cause an error!
-                        | _ ->  failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (Seq.empty, histogramResidual)
+                        | _ ->  printfn "STREAMFAIL";failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (Seq.empty, histogramResidual)
             result
 
      module internal HistogramEvent = 

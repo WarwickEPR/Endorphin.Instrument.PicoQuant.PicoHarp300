@@ -92,7 +92,7 @@ module PicoHarp =
             |> AsyncChoice.liftChoice
 
         /// Sets the PicoHarps mode.
-        let mode picoHarp300 (mode:Mode) = 
+        let setMode picoHarp300 (mode:Mode) = 
             let modeCode = modeEnum mode
             logDevice picoHarp300 "Setting device mode."
             NativeApi.InitialiseMode (index picoHarp300 , modeCode)
@@ -103,9 +103,10 @@ module PicoHarp =
             |> AsyncChoice.liftChoice
 
         /// Open connection to device and perform calibration
-        let initialise serial = asyncChoice {
+        let initialise serial mode  = asyncChoice {
             let picoharp = picoHarp serial
             do! openDevice picoharp 
+            do! setMode picoharp mode
             do! calibrate picoharp
             return picoharp
             }
@@ -262,7 +263,17 @@ module PicoHarp =
                 ("Successfully retrieved channel count rate.")
                 (sprintf "Failed to retrieve channel count rate: %A")
             |> AsyncChoice.liftChoice
-    
+        
+        
+        let triggerHoldOff picoHarp300 deadTime = 
+            logDevice picoHarp300 "Setting trigger hold-off"
+            NativeApi.SetHoldOffTime (index picoHarp300, deadTime)
+            |> checkStatus
+            |> logDeviceOpResult picoHarp300
+                ("Successfully set hold-off.")
+                (sprintf "Failed to set hold-off: %A.")
+            |> AsyncChoice.liftChoice        
+
     module internal Acquisition = 
         /// Starts a measurement
         let start picoHarp300 duration = 
@@ -301,3 +312,4 @@ module PicoHarp =
                 ("Successfully ended measurement.")
                 (sprintf "Failed to end measurement: %A.")
             |> AsyncChoice.liftChoice
+    

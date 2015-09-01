@@ -115,3 +115,6 @@ module internal NativeApi =
     [<DllImport(dllName, EntryPoint = "PH_ReadFiFo")>]
     /// Read the TTTR mode buffer in a FIFO fashion
     extern ErrorCode ReadFiFo(int devidx, uint32[] buffer, int count, [<Out>] int& nactual);
+
+    [<DllImport(dllName, EntryPoint = "PH_SetMarkerHoldoffTime")>]
+    extern ErrorCode SetHoldOffTime(int devidx, int holdofftime);
