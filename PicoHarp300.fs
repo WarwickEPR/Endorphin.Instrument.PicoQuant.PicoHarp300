@@ -71,7 +71,7 @@ module PicoHarp =
         let picoHarp (serial:string) = PicoHarp300 (indexPico serial)
 
         /// Opens the PicoHarp.
-        let openDevice picoHarp300 = 
+        let private openDevice picoHarp300 = 
             let serial = StringBuilder (8)
             logDevice picoHarp300 "Opening device."
             NativeApi.OpenDevice (index picoHarp300, serial) 
@@ -82,7 +82,7 @@ module PicoHarp =
             |> AsyncChoice.liftChoice
 
         /// Calibrates the PicoHarp. 
-        let calibrate picoHarp300 = 
+        let private calibrate picoHarp300 = 
             logDevice picoHarp300 "Calibrating device."
             NativeApi.Calibrate (index picoHarp300)
             |> checkStatus
@@ -92,7 +92,7 @@ module PicoHarp =
             |> AsyncChoice.liftChoice
 
         /// Sets the PicoHarps mode.
-        let initialiseMode picoHarp300 (mode:Mode) = 
+        let mode picoHarp300 (mode:Mode) = 
             let modeCode = modeEnum mode
             logDevice picoHarp300 "Setting device mode."
             NativeApi.InitialiseMode (index picoHarp300 , modeCode)
@@ -101,6 +101,14 @@ module PicoHarp =
                 ("Successfully set the device mode.")
                 (sprintf "Failed to set the device mode: %A.")
             |> AsyncChoice.liftChoice
+
+        /// Open connection to device and perform calibration
+        let initialise serial = asyncChoice {
+            let picoharp = picoHarp serial
+            do! openDevice picoharp 
+            do! calibrate picoharp
+            return picoharp
+            }
 
         /// Closes the PicoHarp.
         let closeDevice picoHarp300 =
