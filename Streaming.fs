@@ -26,21 +26,21 @@ module Streaming =
     type internal TagStream = { Tags                 : seq<Tag>
                                 HistogramParameters  : StreamingParameters }
 
+    /// List of bin number and number of counts in bin
+    type Histogram = { Histogram : (int * int) list }
+
     type StreamingAcquisition = 
         private { Parameters          : StreamingParameters
                   StreamingBuffer     : StreamingBuffer
                   PicoHarp            : PicoHarp300
                   StopCapability      : CancellationCapability<StreamStopOptions>
                   StatusChanged       : Event<StreamStatus>
-                  TagsAvailable       : Event<TagStream> }
+                  TagsAvailable       : Event<TagStream>
+                  HistogramAvailable  : IObservable<Histogram> }
 
     type HistogramAcquisitionHandle = 
         private { Acquisition   : StreamingAcquisition
                   WaitToFinish  : AsyncChoice<unit, string> }
-
-    /// List of bin number and number of counts in bin
-    type Histogram = { Histogram : (int * int) list }
-
     type internal HistogramResidual =
                  {  WorkingHistogram    : int list
                     OverflowMarkers     : int
@@ -111,7 +111,7 @@ module Streaming =
                     ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
                     match histResidual, tag with
                         | None, tag when not <| TagHelper.isMarker tag   -> histogramState
-                        | None, tag                                      -> printfn "GOT A TRIGGER"; (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                        | None, tag                                      -> printfn "GOT A TRIGGER. %A, %d" tag System.Threading.Thread.CurrentThread.ManagedThreadId; (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
                         | Some residual, tag when TagHelper.isPhoton tag -> 
                             match (histogramBin residual parameters tag) with
                                 | Some bin                      -> (histSequence, Some <| (addPhoton residual bin))
@@ -130,15 +130,14 @@ module Streaming =
         type HistogramEvent = 
             internal {  Output   : IObservable<Histogram> }
 
-        let create acquisition = 
+        let create tagsAvailable parameters = 
             let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()
-            let input = acquisition.TagsAvailable
 
             let output = 
-                input.Publish
+                tagsAvailable
                 |> Observable.observeOn eventScheduler 
                 |> Observable.scanInit (Seq.empty, None) (fun (_,residual) tagStream ->
-                     TagStreamReader.extractAllHistograms acquisition.Parameters residual tagStream
+                     TagStreamReader.extractAllHistograms parameters residual tagStream
                     )  // pass each new tag stream and previous residual into the processing function
                 |> Observable.map (fun f -> fst f)
                 |> Observable.collectSeq id // fire event for each histogram
@@ -148,13 +147,17 @@ module Streaming =
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
         
+        
         let create picoHarp histogramParameters = 
+            let tagsAvailable = new Event<TagStream>()
+
             { Parameters = histogramParameters
               StreamingBuffer = { Buffer = buffer }
               PicoHarp = picoHarp
               StopCapability = new CancellationCapability<StreamStopOptions>()
               StatusChanged = new Event<StreamStatus>()
-              TagsAvailable = new Event<TagStream>() }
+              TagsAvailable = tagsAvailable
+              HistogramAvailable = (HistogramEvent.create tagsAvailable.Publish histogramParameters).Output }
         
         let status acquisition =
             acquisition.StatusChanged.Publish
@@ -247,6 +250,4 @@ module Streaming =
             waitToFinish acquisitionHandle
 
         /// Alert when new histograms are available
-        let HistogramsAvailable acquisition = 
-            let histAvailable = HistogramEvent.create acquisition
-            histAvailable.Output
+        let HistogramsAvailable acquisition = acquisition.HistogramAvailable
