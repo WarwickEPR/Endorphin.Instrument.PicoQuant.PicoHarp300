@@ -19,7 +19,7 @@ module PicoHarp300 =
                  let picoHarp300 = PicoHarp300 deviceIndex 
                  let serialNumber = StringBuilder (8)
                  let check = NativeApi.OpenDevice (index picoHarp300, serialNumber) 
-                             |> checkStatus
+                             |> Status.checkStatus
                  if (serial = string(serialNumber)) then
                      deviceIndex
                  else 
@@ -34,7 +34,7 @@ module PicoHarp300 =
             let serial = StringBuilder (8)
             logDevice picoHarp300 "Retrieving device serial number."
             NativeApi.GetSerialNumber (index picoHarp300 , serial)
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved the device (%A) serial number.")
                 (sprintf "Failed to retrieve the device serial number: %A.")
@@ -47,7 +47,7 @@ module PicoHarp300 =
             let vers    = StringBuilder (8)
             logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
             NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers)
-            |> checkStatus 
+            |> Status.checkStatus 
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved the device (%A) hardware information." )
                 (sprintf "Failed to retrieve the device hardware information: %A")
@@ -70,7 +70,7 @@ module PicoHarp300 =
             let mutable resolution : double = Unchecked.defaultof<_>
             logDevice picoHarp300 "Retrieving device base resolution."
             NativeApi.GetResolution(index picoHarp300 , &resolution) 
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved the device base resolution.")
                 (sprintf "Failed to retrieve the device base resolution: %A")
@@ -83,7 +83,7 @@ module PicoHarp300 =
             let serial = StringBuilder (8)
             logDevice picoHarp300 "Opening device."
             NativeApi.OpenDevice (index picoHarp300, serial) 
-            |> checkStatus 
+            |> Status.checkStatus 
             |> logDeviceOpResult picoHarp300 
                 ("Successfully opened the PicoHarp.")
                 (sprintf "Failed to open the PicoHarp: %A.")
@@ -93,7 +93,7 @@ module PicoHarp300 =
         let private calibrate picoHarp300 = 
             logDevice picoHarp300 "Calibrating device."
             NativeApi.Calibrate (index picoHarp300)
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300  
                 ("Successfully calibrated the device.")
                 (sprintf "Failed to calibrate the device: %A.")
@@ -104,7 +104,7 @@ module PicoHarp300 =
             let modeCode = modeEnum mode
             logDevice picoHarp300 "Setting device mode."
             NativeApi.InitialiseMode (index picoHarp300 , modeCode)
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300
                 ("Successfully set the device mode.")
                 (sprintf "Failed to set the device mode: %A.")
@@ -112,7 +112,7 @@ module PicoHarp300 =
 
         /// Open connection to device and perform calibration
         let initialise serial = asyncChoice {
-            let picoharp = picoHarp serial
+            let picoharp = Information.picoHarp serial
             do! openDevice picoharp 
             do! calibrate picoharp
             return picoharp
@@ -122,7 +122,7 @@ module PicoHarp300 =
         let closeDevice picoHarp300 =
             logDevice picoHarp300 "Closing device."
             NativeApi.CloseDevice (index picoHarp300)
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300
                 ("Successfully closed the PicoHarp.")
                 (sprintf "Failed to close the PicoHarp: %A.")  
@@ -136,7 +136,7 @@ module PicoHarp300 =
             let divider = rateDividerEnum sync       
             logDevice picoHarp300 "Setting the sync channel divider."     
             NativeApi.SetSyncDiv (index picoHarp300, divider)
-            |> checkStatus 
+            |> Status.checkStatus 
             |> logDeviceOpResult picoHarp300
                 ("Successfully set the device sync channel divider.")
                 (sprintf "Failed to set the device sync channel divider: %A")
@@ -147,7 +147,7 @@ module PicoHarp300 =
             let delay = Quantities.durationNanoSeconds (sync.Delay)
             logDevice picoHarp300 "Setting the sync channel offset."
             NativeApi.SetSyncDelay (index picoHarp300, int(delay))
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300
                 (sprintf "Successfully set the device sync offset.")
                 (sprintf "Failed to set the device sync offset: %A")
@@ -181,7 +181,7 @@ module PicoHarp300 =
             let cross   =   Quantities.voltageMillivolts (cfd.ZeroCross)  
             logDevice picoHarp300 "Initialising the channel's CFD."
             NativeApi.SetInputCFD (index picoHarp300, channel, int(level), int(cross))
-            |> checkStatus 
+            |> Status.checkStatus 
             |> logDeviceOpResult picoHarp300
                 ("Successfully initialised channel's CFD.")
                 (sprintf "Failed to initialis channel's CFD: %A")
@@ -195,7 +195,7 @@ module PicoHarp300 =
             let mutable elasped : double = Unchecked.defaultof<_>
             logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
             NativeApi.GetElapsedMeasTime (index picoHarp300, &elasped) 
-            |> checkStatus
+            |> Status.checkStatus
             |> logQueryResult 
                 (sprintf "Successfully retrieved measurement time: %A")
                 (sprintf "Failed to retrieve measurement time: %A") 
@@ -206,7 +206,7 @@ module PicoHarp300 =
             let mutable ctcStatus : int = Unchecked.defaultof<_>
             logDevice picoHarp300 "Checking CTC status" 
             NativeApi.CTCStatus (index picoHarp300, &ctcStatus)   
-            |> checkStatus
+            |> Status.checkStatus
             |> logQueryResult 
                 (sprintf "Successfully retrieved CTC status: %A")
                 (sprintf "Failed to retrieve CTC status: %A") 
@@ -217,7 +217,7 @@ module PicoHarp300 =
             let mutable rate : int = Unchecked.defaultof<_>
             logDevice picoHarp300 "Retrieving channel count rate."
             GetCountRate (index picoHarp300, channel, &rate)
-            |> checkStatusAndReturn (rate)
+            |> Status.checkStatusAndReturn (rate)
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved channel count rate.")
                 (sprintf "Failed to retrieve channel count rate: %A")
@@ -229,7 +229,7 @@ module PicoHarp300 =
             let acquisitionTime = Quantities.durationMilliSeconds duration
             logDevice picoHarp300 "Setting acquisition time and starting measurement."
             NativeApi.StartMeasurement (index picoHarp300 , int (acquisitionTime)) 
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300
                 ("Successfully set acquisition time and started TTTR measurement") 
                 (sprintf "Failed to start: %A.")
@@ -239,14 +239,14 @@ module PicoHarp300 =
         let readFifoBuffer picoHarp300 (streamingBuffer : StreamingBuffer) = 
             let mutable counts = Unchecked.defaultof<_>
             NativeApi.ReadFiFo(index picoHarp300, streamingBuffer.Buffer, TTTRMaxEvents, &counts)
-            |> checkStatusAndReturn (counts)
+            |> Status.checkStatusAndReturn (counts)
             |> AsyncChoice.liftChoice
     
         let checkMeasurementFinished picoHarp300 =
             let mutable result = 0
             logDevice picoHarp300 "Checking whether acquisition has finished."
             NativeApi.CTCStatus (index picoHarp300, &result)
-            |> checkStatusAndReturn (result <> 0)
+            |> Status.checkStatusAndReturn (result <> 0)
             |> logQueryResult
                 (sprintf "Successfully checked acquisition finished: %A.")
                 (sprintf "Failed to check acquisition status due to error: %A.")
@@ -256,7 +256,7 @@ module PicoHarp300 =
         let stop picoHarp300 = 
             logDevice picoHarp300 "Ceasing measurement."
             NativeApi.StopMeasurement (index picoHarp300)
-            |> checkStatus
+            |> Status.checkStatus
             |> logDeviceOpResult picoHarp300
                 ("Successfully ended measurement.")
                 (sprintf "Failed to end measurement: %A.")
