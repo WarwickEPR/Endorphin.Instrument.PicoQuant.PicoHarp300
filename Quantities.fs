@@ -7,7 +7,7 @@ open Endorphin.Core.NationalInstruments
 open Endorphin.Core.String
 open ExtCore.Control
 
-module Quantities = 
+module internal Quantities = 
     
     let durationSeconds = function
         | Duration_ps duration -> Picoseconds.toSeconds duration 
