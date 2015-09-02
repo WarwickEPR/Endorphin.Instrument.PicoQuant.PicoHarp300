@@ -1,7 +1,7 @@
 ﻿namespace Endorphin.Instrument.PicoHarp300
 
 [<AutoOpen>]
-module internal Error = 
+module internal Status = 
     
     /// Error code for the PicoHarp 300.
     type ErrorCode = 

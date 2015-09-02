@@ -7,68 +7,76 @@ open System.Text
 open Endorphin.Core
 open ExtCore.Control
 
-module PicoHarp = 
-    
-    /// Checks return value of the NativeApi function and converts to a success or gives an error message.
-    let internal checkStatus = 
-        function
-        | Error.Ok -> succeed ()
-        | Error.Error string -> fail string 
+module PicoHarp300 = 
 
-    /// Check the value of set flags
-    let internal checkFlags = 
-        function
-        | Flag.Ok -> succeed ()
-        | Flag.Flag string -> fail string
-
-    let internal checkStatusAndReturn value status = choice {
-        do! checkStatus status
-        return value }
-
-    /// Creates log for PicoHarp 300.
-    let log = log4net.LogManager.GetLogger "PicoHarp 300"
-
-    /// Logs the PicoHarp.
-    let internal logDevice (picoHarp : PicoHarp300) message =
-        sprintf "[%A] %s" picoHarp message |> log.Info
-
-    /// Logs a success or failure message based on result of function. 
-    let internal logQueryResult successMessageFunc failureMessageFunc input =
-        match input with
-        | Success value -> successMessageFunc value |> log.Debug
-        | Failure error -> failureMessageFunc error |> log.Error
-        input 
-        
-    /// Logs a success or failure message based on result of function using the PicoHarp's index.
-    let internal logDeviceQueryResult (picoHarp : PicoHarp300) successMessageFunc failureMessageFunc =
-        logQueryResult 
-            (fun value -> sprintf "[%A] %s" picoHarp (successMessageFunc value))
-            (fun error -> sprintf "[%A] %s" picoHarp (failureMessageFunc error))
-
-    let internal logDeviceOpResult picoHarp300 successMessage = logDeviceQueryResult picoHarp300 (fun _ -> successMessage)
-    
-    /// Extract the device index 
-    let internal index (PicoHarp300 h) = h
-    
-    module Initialise =     
-       
-       /// Returns the device index of a PicoHarp using serial number.
-       /// Stops recursion after deviceIndex > 7 as allowed values are 0..7. 
+    module Information = 
+                    
+        /// Returns the device index of a PicoHarp using serial number.
+        /// Stops recursion after deviceIndex > 7 as allowed values are 0..7. 
         let rec private getDeviceIndex (serial:string) (deviceIndex) = 
-            if deviceIndex > 7 then failwithf "No PicoHarp found."
-            else     
-                let picoHarp300 = PicoHarp300 deviceIndex 
-                let serialNumber = StringBuilder (8)
-                let check = NativeApi.OpenDevice (index picoHarp300, serialNumber) 
-                            |> checkStatus
-                if (serial = string(serialNumber)) then
-                    deviceIndex
-                else 
-                    getDeviceIndex serial (deviceIndex + 1)   
+             if deviceIndex > 7 then failwithf "No PicoHarp found."
+             else     
+                 let picoHarp300 = PicoHarp300 deviceIndex 
+                 let serialNumber = StringBuilder (8)
+                 let check = NativeApi.OpenDevice (index picoHarp300, serialNumber) 
+                             |> checkStatus
+                 if (serial = string(serialNumber)) then
+                     deviceIndex
+                 else 
+                     getDeviceIndex serial (deviceIndex + 1)   
         
         let private indexPico (serial:string) = getDeviceIndex serial 0
         ///  Gets device index, starts with device index 0.
         let picoHarp (serial:string) = PicoHarp300 (indexPico serial)
+
+        /// Returns the PicoHarp's serial number.
+        let GetSerialNumber picoHarp300 = 
+            let serial = StringBuilder (8)
+            logDevice picoHarp300 "Retrieving device serial number."
+            NativeApi.GetSerialNumber (index picoHarp300 , serial)
+            |> checkStatus
+            |> logDeviceOpResult picoHarp300
+                ("Successfully retrieved the device (%A) serial number.")
+                (sprintf "Failed to retrieve the device serial number: %A.")
+            |> AsyncChoice.liftChoice
+
+        /// Returens the PicoHarp's model number, part number ans version.
+        let private hardwareInformation picoHarp300 = 
+            let model   = StringBuilder (16)
+            let partnum = StringBuilder (8)
+            let vers    = StringBuilder (8)
+            logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
+            NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers)
+            |> checkStatus 
+            |> logDeviceOpResult picoHarp300
+                ("Successfully retrieved the device (%A) hardware information." )
+                (sprintf "Failed to retrieve the device hardware information: %A")
+            |> AsyncChoice.liftChoice
+
+        /// Logs PicoHarp's model number. 
+        let model picoHarp300 = 
+            hardwareInformation picoHarp300 
+        
+        /// Logs PicoHarp's part number.
+        let partNumber picoHarp300 = 
+            hardwareInformation picoHarp300
+
+        /// Logs PicoHarp's version.
+        let version picoHarp300 = 
+            hardwareInformation picoHarp300 
+        
+        /// Returns the histogram base resolution (the PicoHarp needs to be in histogram mode for function to return a success)
+        let getBaseResolution picoHarp300 = 
+            let mutable resolution : double = Unchecked.defaultof<_>
+            logDevice picoHarp300 "Retrieving device base resolution."
+            NativeApi.GetResolution(index picoHarp300 , &resolution) 
+            |> checkStatus
+            |> logDeviceOpResult picoHarp300
+                ("Successfully retrieved the device base resolution.")
+                (sprintf "Failed to retrieve the device base resolution: %A")
+            |> AsyncChoice.liftChoice
+    
+    module Initialise =     
 
         /// Opens the PicoHarp.
         let private openDevice picoHarp300 = 
@@ -120,54 +128,6 @@ module PicoHarp =
                 (sprintf "Failed to close the PicoHarp: %A.")  
             |> AsyncChoice.liftChoice 
                     
-    module Information = 
-            
-        /// Returns the PicoHarp's serial number.
-        let GetSerialNumber picoHarp300 = 
-            let serial = StringBuilder (8)
-            logDevice picoHarp300 "Retrieving device serial number."
-            NativeApi.GetSerialNumber (index picoHarp300 , serial)
-            |> checkStatus
-            |> logDeviceOpResult picoHarp300
-                ("Successfully retrieved the device (%A) serial number.")
-                (sprintf "Failed to retrieve the device serial number: %A.")
-            |> AsyncChoice.liftChoice
-
-        /// Returens the PicoHarp's model number, part number ans version.
-        let private hardwareInformation picoHarp300 = 
-            let model   = StringBuilder (16)
-            let partnum = StringBuilder (8)
-            let vers    = StringBuilder (8)
-            logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
-            NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers)
-            |> checkStatus 
-            |> logDeviceOpResult picoHarp300
-                ("Successfully retrieved the device (%A) hardware information." )
-                (sprintf "Failed to retrieve the device hardware information: %A")
-            |> AsyncChoice.liftChoice
-
-        /// Logs PicoHarp's model number. 
-        let model picoHarp300 = 
-            hardwareInformation picoHarp300 
-        
-        /// Logs PicoHarp's part number.
-        let partNumber picoHarp300 = 
-            hardwareInformation picoHarp300
-
-        /// Logs PicoHarp's version.
-        let version picoHarp300 = 
-            hardwareInformation picoHarp300 
-        
-        /// Returns the histogram base resolution (the PicoHarp needs to be in histogram mode for function to return a success)
-        let getBaseResolution picoHarp300 = 
-            let mutable resolution : double = Unchecked.defaultof<_>
-            logDevice picoHarp300 "Retrieving device base resolution."
-            NativeApi.GetResolution(index picoHarp300 , &resolution) 
-            |> checkStatus
-            |> logDeviceOpResult picoHarp300
-                ("Successfully retrieved the device base resolution.")
-                (sprintf "Failed to retrieve the device base resolution: %A")
-            |> AsyncChoice.liftChoice
         
     module SyncChannel = 
             
