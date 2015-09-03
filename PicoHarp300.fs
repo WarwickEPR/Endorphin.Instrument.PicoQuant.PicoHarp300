@@ -8,29 +8,29 @@ open Endorphin.Core
 open ExtCore.Control
 
 module PicoHarp300 = 
-
-    module Information = 
-                    
-        /// Returns the device index of a PicoHarp using serial number.
-        /// Stops recursion after deviceIndex > 7 as allowed values are 0..7. 
-        let rec private getDeviceIndex (serial:string) (deviceIndex) = 
-             if deviceIndex > 7 then failwithf "No PicoHarp found."
-             else     
-                 let picoHarp300 = PicoHarp300 deviceIndex 
-                 let serialNumber = StringBuilder (8)
-                 let check = NativeApi.OpenDevice (index picoHarp300, serialNumber) 
-                             |> Status.checkStatus
-                 if (serial = string(serialNumber)) then
-                     deviceIndex
-                 else 
-                     getDeviceIndex serial (deviceIndex + 1)   
+    
+    /// Returns the device index of a PicoHarp using serial number.
+    /// Stops recursion after deviceIndex > 7 as allowed values are 0..7. 
+    let rec private getDeviceIndex (serial:string) (deviceIndex) = 
+         if deviceIndex > 7 then failwithf "No PicoHarp found."
+         else     
+             let picoHarp300 = PicoHarp300 deviceIndex 
+             let serialNumber = StringBuilder (8)
+             let check = NativeApi.OpenDevice (index picoHarp300, serialNumber) 
+                         |> Status.checkStatus
+             if (serial = string(serialNumber)) then
+                 deviceIndex
+             else 
+                 getDeviceIndex serial (deviceIndex + 1)   
         
-        let private indexPico (serial:string) = getDeviceIndex serial 0
-        ///  Gets device index, starts with device index 0.
-        let picoHarp (serial:string) = PicoHarp300 (indexPico serial)
+    let private indexPico (serial:string) = getDeviceIndex serial 0
+    ///  Gets device index, starts with device index 0.
+    let picoHarp (serial:string) = PicoHarp300 (indexPico serial)
+        
+    module internal Information = 
 
         /// Returns the PicoHarp's serial number.
-        let GetSerialNumber picoHarp300 = 
+        let getSerialNumber picoHarp300 = 
             let serial = StringBuilder (8)
             logDevice picoHarp300 "Retrieving device serial number."
             NativeApi.GetSerialNumber (index picoHarp300 , serial)
@@ -41,7 +41,7 @@ module PicoHarp300 =
             |> AsyncChoice.liftChoice
 
         /// Returens the PicoHarp's model number, part number ans version.
-        let private hardwareInformation picoHarp300 = 
+        let gethardwareInformation picoHarp300 = 
             let model   = StringBuilder (16)
             let partnum = StringBuilder (8)
             let vers    = StringBuilder (8)
@@ -55,15 +55,15 @@ module PicoHarp300 =
 
         /// Logs PicoHarp's model number. 
         let model picoHarp300 = 
-            hardwareInformation picoHarp300 
+            gethardwareInformation picoHarp300 
         
         /// Logs PicoHarp's part number.
         let partNumber picoHarp300 = 
-            hardwareInformation picoHarp300
+            gethardwareInformation picoHarp300
 
         /// Logs PicoHarp's version.
         let version picoHarp300 = 
-            hardwareInformation picoHarp300 
+            gethardwareInformation picoHarp300 
         
         /// Returns the histogram base resolution (the PicoHarp needs to be in histogram mode for function to return a success)
         let getBaseResolution picoHarp300 = 
@@ -100,7 +100,7 @@ module PicoHarp300 =
             |> AsyncChoice.liftChoice
 
         /// Sets the PicoHarps mode.
-        let mode picoHarp300 (mode:Mode) = 
+        let initialiseMode picoHarp300 (mode:Mode) = 
             let modeCode = modeEnum mode
             logDevice picoHarp300 "Setting device mode."
             NativeApi.InitialiseMode (index picoHarp300 , modeCode)
@@ -112,10 +112,10 @@ module PicoHarp300 =
 
         /// Open connection to device and perform calibration
         let initialise serial = asyncChoice {
-            let picoharp = Information.picoHarp serial
-            do! openDevice picoharp 
-            do! calibrate picoharp
-            return picoharp
+            let device = picoHarp serial
+            do! openDevice device 
+            do! calibrate device
+            return device
             }
 
         /// Closes the PicoHarp.
@@ -127,66 +127,6 @@ module PicoHarp300 =
                 ("Successfully closed the PicoHarp.")
                 (sprintf "Failed to close the PicoHarp: %A.")  
             |> AsyncChoice.liftChoice 
-                    
-        
-    module SyncChannel = 
-            
-        /// Sets the rate divider of the sync channel.
-        let setSyncDiv picoHarp300 (sync:SyncParameters) = 
-            let divider = rateDividerEnum sync       
-            logDevice picoHarp300 "Setting the sync channel divider."     
-            NativeApi.SetSyncDiv (index picoHarp300, divider)
-            |> Status.checkStatus 
-            |> logDeviceOpResult picoHarp300
-                ("Successfully set the device sync channel divider.")
-                (sprintf "Failed to set the device sync channel divider: %A")
-            |> AsyncChoice.liftChoice
-
-        /// Sets the offset of the sync/channel 0.
-        let SetSyncOffset picoHarp300 (sync:SyncParameters) = 
-            let delay = Quantities.durationNanoSeconds (sync.Delay)
-            logDevice picoHarp300 "Setting the sync channel offset."
-            NativeApi.SetSyncDelay (index picoHarp300, int(delay))
-            |> Status.checkStatus
-            |> logDeviceOpResult picoHarp300
-                (sprintf "Successfully set the device sync offset.")
-                (sprintf "Failed to set the device sync offset: %A")
-            |> AsyncChoice.liftChoice
-
-    module CFD = 
-        
-        /// Checks if the values for discriminator level and the zerocross are inside their respective ranges. 
-        let private rangeCFD (cfd:CFD) = 
-            let level = Quantities.voltageMillivolts (cfd.DiscriminatorLevel) 
-            let cross = Quantities.voltageMillivolts (cfd.ZeroCross)
-            if (level < 0.0<mV> || level < -800.0<mV>) then
-                1
-            elif (cross < 0.0<mV> || cross > 20.0<mV>) then 
-                2
-            else 
-                0
-
-        /// Logs CFD errors with log level warn.
-        let private rangeErrorCodes picoHarp300 code = 
-            if code = 1 then
-                log.Warn ("Failed to initialise the CFD, discriminator level is outside of the range -800mV to 0mV.")
-            else
-                log.Warn ("Failed to initialise the CFD, zerocross is outside to the range 20mV to 0mV")
-
-        /// Takes type of CFD and converts elements into integers then passes to the function PH_SetInputCFD.
-        /// This sets the discriminator level and zero cross for the CFD in channels 1 or 2. 
-        let initialiseCFD picoHarp300 (cfd:CFD) = 
-            let channel =   channelEnum (cfd.InputChannel)
-            let level   =   Quantities.voltageMillivolts (cfd.DiscriminatorLevel) 
-            let cross   =   Quantities.voltageMillivolts (cfd.ZeroCross)  
-            logDevice picoHarp300 "Initialising the channel's CFD."
-            NativeApi.SetInputCFD (index picoHarp300, channel, int(level), int(cross))
-            |> Status.checkStatus 
-            |> logDeviceOpResult picoHarp300
-                ("Successfully initialised channel's CFD.")
-                (sprintf "Failed to initialis channel's CFD: %A")
-            |> AsyncChoice.liftChoice
-
     
     /// measurement functions which are useful in both histogramming and TTTR mode
     module Query =
@@ -260,4 +200,62 @@ module PicoHarp300 =
             |> logDeviceOpResult picoHarp300
                 ("Successfully ended measurement.")
                 (sprintf "Failed to end measurement: %A.")
+            |> AsyncChoice.liftChoice
+                    
+    module SyncChannel = 
+            
+        /// Sets the rate divider of the sync channel.
+        let setSyncDiv picoHarp300 (sync:SyncParameters) = 
+            let divider = rateDividerEnum sync       
+            logDevice picoHarp300 "Setting the sync channel divider."     
+            NativeApi.SetSyncDiv (index picoHarp300, divider)
+            |> Status.checkStatus 
+            |> logDeviceOpResult picoHarp300
+                ("Successfully set the device sync channel divider.")
+                (sprintf "Failed to set the device sync channel divider: %A")
+            |> AsyncChoice.liftChoice
+
+        /// Sets the offset of the sync/channel 0.
+        let SetSyncOffset picoHarp300 (sync:SyncParameters) = 
+            let delay = Quantities.durationNanoSeconds (sync.Delay)
+            logDevice picoHarp300 "Setting the sync channel offset."
+            NativeApi.SetSyncDelay (index picoHarp300, int(delay))
+            |> Status.checkStatus
+            |> logDeviceOpResult picoHarp300
+                (sprintf "Successfully set the device sync offset.")
+                (sprintf "Failed to set the device sync offset: %A")
+            |> AsyncChoice.liftChoice
+
+    module CFD = 
+        
+        /// Checks if the values for discriminator level and the zerocross are inside their respective ranges. 
+        let private rangeCFD (cfd:CFD) = 
+            let level = Quantities.voltageMillivolts (cfd.DiscriminatorLevel) 
+            let cross = Quantities.voltageMillivolts (cfd.ZeroCross)
+            if (level < 0.0<mV> || level < -800.0<mV>) then
+                1
+            elif (cross < 0.0<mV> || cross > 20.0<mV>) then 
+                2
+            else 
+                0
+
+        /// Logs CFD errors with log level warn.
+        let private rangeErrorCodes picoHarp300 code = 
+            if code = 1 then
+                log.Warn ("Failed to initialise the CFD, discriminator level is outside of the range -800mV to 0mV.")
+            else
+                log.Warn ("Failed to initialise the CFD, zerocross is outside to the range 20mV to 0mV")
+
+        /// Takes type of CFD and converts elements into integers then passes to the function PH_SetInputCFD.
+        /// This sets the discriminator level and zero cross for the CFD in channels 1 or 2. 
+        let initialiseCFD picoHarp300 (cfd:CFD) = 
+            let channel =   channelEnum (cfd.InputChannel)
+            let level   =   Quantities.voltageMillivolts (cfd.DiscriminatorLevel) 
+            let cross   =   Quantities.voltageMillivolts (cfd.ZeroCross)  
+            logDevice picoHarp300 "Initialising the channel's CFD."
+            NativeApi.SetInputCFD (index picoHarp300, channel, int(level), int(cross))
+            |> Status.checkStatus 
+            |> logDeviceOpResult picoHarp300
+                ("Successfully initialised channel's CFD.")
+                (sprintf "Failed to initialis channel's CFD: %A")
             |> AsyncChoice.liftChoice
