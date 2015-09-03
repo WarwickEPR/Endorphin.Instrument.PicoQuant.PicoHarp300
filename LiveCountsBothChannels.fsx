@@ -8,7 +8,7 @@
 #r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
 #r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
 #r "../Endorphin.Core/bin/Debug/Endorphin.Core.dll"
-#r "bin/Debug/PicoHarp300.dll"
+#r "bin/Debug/Endorphin.Instrument.PicoHarp300.dll"
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
@@ -96,12 +96,11 @@ let showChart channel_0 channel_1 (channel:InputChannel) = async {
         
 
 /// Initialise the PicoHarp to histogramming mode, sets bin resolution and overflow limit.
-let initialise handle = asyncChoice{  
-    let! opendev  = PicoHarp.Initialise.openDevice handle   
-    do! PicoHarp.Initialise.initialiseMode handle Histogramming
-    do! Histogram.setBinning handle histogram
-    do! Histogram.stopOverflow handle histogram
-    return opendev}
+let initialise = asyncChoice{  
+    let! picoHarp = PicoHarp.Initialise.initialise "1020854" Histogramming 
+    do! Histogram.setBinning picoHarp histogram
+    do! Histogram.stopOverflow picoHarp histogram
+    return picoHarp}
 
 /// Events for charting.
 let channelZeroEvent = new Event<int >()
@@ -128,7 +127,7 @@ let experiment duration handle = asyncChoice {
      do! showChart publish_0 publish_1 Both |> AsyncChoice.liftAsync
      do! liveCounts duration 0 handle }
 
-initialise handle |> Async.RunSynchronously
+initialise |> Async.RunSynchronously
 Async.StartWithContinuations(experiment 10000000 handle , printfn "%A", ignore, ignore)
 
 
