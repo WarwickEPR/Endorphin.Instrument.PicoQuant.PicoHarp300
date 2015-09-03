@@ -30,85 +30,61 @@ module PicoHarp300 =
     module internal Information = 
 
         /// Returns the PicoHarp's serial number.
-        let getSerialNumber picoHarp300 = 
-            let serial = StringBuilder (8)
-            logDevice picoHarp300 "Retrieving device serial number."
-            NativeApi.GetSerialNumber (index picoHarp300 , serial)
-            |> Status.checkStatus
-            |> logDeviceOpResult picoHarp300
-                ("Successfully retrieved the device (%A) serial number.")
-                (sprintf "Failed to retrieve the device serial number: %A.")
-            |> AsyncChoice.liftChoice
-
+        let getSerialNumber picoHarp300 =    
+            let workflow = asyncChoice{        
+                let serial = StringBuilder (8)
+                logDevice picoHarp300 "Retrieving device serial number."
+                do! NativeApi.GetSerialNumber (index picoHarp300 , serial) |> Status.Logging.logError picoHarp300
+                return serial |> string}
+            workflow 
+           
         /// Returens the PicoHarp's model number, part number ans version.
         let gethardwareInformation picoHarp300 = 
-            let model   = StringBuilder (16)
-            let partnum = StringBuilder (8)
-            let vers    = StringBuilder (8)
-            logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
-            NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers)
-            |> Status.checkStatus 
-            |> logDeviceOpResult picoHarp300
-                ("Successfully retrieved the device (%A) hardware information." )
-                (sprintf "Failed to retrieve the device hardware information: %A")
-            |> AsyncChoice.liftChoice
-
-        /// Logs PicoHarp's model number. 
-        let model picoHarp300 = 
-            gethardwareInformation picoHarp300 
-        
-        /// Logs PicoHarp's part number.
-        let partNumber picoHarp300 = 
-            gethardwareInformation picoHarp300
-
-        /// Logs PicoHarp's version.
-        let version picoHarp300 = 
-            gethardwareInformation picoHarp300 
+            let workflow = asyncChoice{ 
+                let model   = StringBuilder (16)
+                let partnum = StringBuilder (8)
+                let vers    = StringBuilder (8)
+                logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
+                do! NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers) |> Status.Logging.logError picoHarp300
+                return (string(model), string(partnum), string(vers)}
+            workflow 
         
         /// Returns the histogram base resolution (the PicoHarp needs to be in histogram mode for function to return a success)
         let getBaseResolution picoHarp300 = 
-            let mutable resolution : double = Unchecked.defaultof<_>
-            logDevice picoHarp300 "Retrieving device base resolution."
-            NativeApi.GetResolution(index picoHarp300 , &resolution) 
-            |> Status.checkStatus
-            |> logDeviceOpResult picoHarp300
-                ("Successfully retrieved the device base resolution.")
-                (sprintf "Failed to retrieve the device base resolution: %A")
-            |> AsyncChoice.liftChoice
-    
+            let workflow = asyncChoice{        
+                let mutable resolution : double = Unchecked.defaultof<_>
+                logDevice picoHarp300 "Retrieving device base resolution."
+                do! NativeApi.GetResolution(index picoHarp300 , &resolution) |> Status.Logging.logError picoHarp300
+                return resolution} 
+            workflow 
+                     
     module Initialise =     
 
         /// Opens the PicoHarp.
         let private openDevice picoHarp300 = 
-            let serial = StringBuilder (8)
-            logDevice picoHarp300 "Opening device."
-            NativeApi.OpenDevice (index picoHarp300, serial) 
-            |> Status.checkStatus 
-            |> logDeviceOpResult picoHarp300 
-                ("Successfully opened the PicoHarp.")
-                (sprintf "Failed to open the PicoHarp: %A.")
-            |> AsyncChoice.liftChoice
+            let workflow = asyncChoice{
+                let serial = StringBuilder (8)
+                logDevice picoHarp300 "Opening device."
+                do! NativeApi.OpenDevice (index picoHarp300, serial) |> Status.Logging.logError picoHarp300
+                } 
+            workflow 
 
         /// Calibrates the PicoHarp. 
         let private calibrate picoHarp300 = 
-            logDevice picoHarp300 "Calibrating device."
-            NativeApi.Calibrate (index picoHarp300)
-            |> Status.checkStatus
-            |> logDeviceOpResult picoHarp300  
-                ("Successfully calibrated the device.")
-                (sprintf "Failed to calibrate the device: %A.")
-            |> AsyncChoice.liftChoice
+            let workflow = asyncChoice{
+                logDevice picoHarp300 "Calibrating device."
+                do! NativeApi.Calibrate (index picoHarp300) |> Status.Logging.logError picoHarp300
+                }
+            workflow 
 
         /// Sets the PicoHarps mode.
         let initialiseMode picoHarp300 (mode:Mode) = 
-            let modeCode = modeEnum mode
-            logDevice picoHarp300 "Setting device mode."
-            NativeApi.InitialiseMode (index picoHarp300 , modeCode)
-            |> Status.checkStatus
-            |> logDeviceOpResult picoHarp300
-                ("Successfully set the device mode.")
-                (sprintf "Failed to set the device mode: %A.")
-            |> AsyncChoice.liftChoice
+            let workflow = asyncChoice{        
+                let modeCode = modeEnum mode
+                logDevice picoHarp300 "Setting device mode."
+                do! NativeApi.InitialiseMode (index picoHarp300 , modeCode) |> Status.Logging.logError picoHarp300
+                }
+            workflow 
 
         /// Open connection to device and perform calibration
         let initialise serial = asyncChoice {
@@ -120,60 +96,51 @@ module PicoHarp300 =
 
         /// Closes the PicoHarp.
         let closeDevice picoHarp300 =
-            logDevice picoHarp300 "Closing device."
-            NativeApi.CloseDevice (index picoHarp300)
-            |> Status.checkStatus
-            |> logDeviceOpResult picoHarp300
-                ("Successfully closed the PicoHarp.")
-                (sprintf "Failed to close the PicoHarp: %A.")  
-            |> AsyncChoice.liftChoice 
-    
+            let workflow = asyncChoice{
+                logDevice picoHarp300 "Closing device."
+                do! NativeApi.CloseDevice (index picoHarp300) |> Status.Logging.logError picoHarp300
+                }
+            workflow 
+        
     /// measurement functions which are useful in both histogramming and TTTR mode
     module Query =
         /// Returns time period over which experiment was running. 
         let getMeasurementTime picoHarp300 =
-            let mutable elasped : double = Unchecked.defaultof<_>
-            logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
-            NativeApi.GetElapsedMeasTime (index picoHarp300, &elasped) 
-            |> Status.checkStatus
-            |> logQueryResult 
-                (sprintf "Successfully retrieved measurement time: %A")
-                (sprintf "Failed to retrieve measurement time: %A") 
-            |> AsyncChoice.liftChoice
+            let workflow = asyncChoice{        
+                let mutable elasped : double = Unchecked.defaultof<_>
+                logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
+                do! NativeApi.GetElapsedMeasTime (index picoHarp300, &elasped) |> Status.Logging.logError picoHarp300 
+                }
+            workflow     
 
         /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
         let getCTCStatus picoHarp300 = 
-            let mutable ctcStatus : int = Unchecked.defaultof<_>
-            logDevice picoHarp300 "Checking CTC status" 
-            NativeApi.CTCStatus (index picoHarp300, &ctcStatus)   
-            |> Status.checkStatus
-            |> logQueryResult 
-                (sprintf "Successfully retrieved CTC status: %A")
-                (sprintf "Failed to retrieve CTC status: %A") 
-            |> AsyncChoice.liftChoice
+            let workflow = asyncChoice{        
+                let mutable ctcStatus : int = Unchecked.defaultof<_>
+                logDevice picoHarp300 "Checking CTC status" 
+                do! NativeApi.CTCStatus (index picoHarp300, &ctcStatus) |> Status.Logging.logError picoHarp300
+                }
+            workflow   
         
         /// Writes channel count rate to a mutable int.  
         let getCountRate picoHarp300 (channel:int) =
-            let mutable rate : int = Unchecked.defaultof<_>
-            logDevice picoHarp300 "Retrieving channel count rate."
-            GetCountRate (index picoHarp300, channel, &rate)
-            |> Status.checkStatusAndReturn (rate)
-            |> logDeviceOpResult picoHarp300
-                ("Successfully retrieved channel count rate.")
-                (sprintf "Failed to retrieve channel count rate: %A")
-            |> AsyncChoice.liftChoice
-    
+            let workflow = asyncChoice{        
+                let mutable rate : int = Unchecked.defaultof<_>
+                logDevice picoHarp300 "Retrieving channel count rate."
+                do! NativeApi.GetCountRate (index picoHarp300, channel, &rate) |> Status.Logging.logError picoHarp300
+                return rate}
+            workflow 
+            
     module internal Acquisition = 
         /// Starts a measurement
         let start picoHarp300 duration = 
-            let acquisitionTime = Quantities.durationMilliSeconds duration
-            logDevice picoHarp300 "Setting acquisition time and starting measurement."
-            NativeApi.StartMeasurement (index picoHarp300 , int (acquisitionTime)) 
-            |> Status.checkStatus
-            |> logDeviceOpResult picoHarp300
-                ("Successfully set acquisition time and started TTTR measurement") 
-                (sprintf "Failed to start: %A.")
-            |> AsyncChoice.liftChoice
+            let workflow = asyncChoice{        
+                let acquisitionTime = Quantities.durationMilliSeconds duration
+                logDevice picoHarp300 "Setting acquisition time and starting measurement."
+                do! NativeApi.StartMeasurement (index picoHarp300 , int (acquisitionTime)) |> Status.Logging.logError picoHarp300
+                }
+            workflow 
+          
 
         /// Read TTTR FIFO buffer
         let readFifoBuffer picoHarp300 (streamingBuffer : StreamingBuffer) = 
@@ -183,14 +150,12 @@ module PicoHarp300 =
             |> AsyncChoice.liftChoice
     
         let checkMeasurementFinished picoHarp300 =
-            let mutable result = 0
-            logDevice picoHarp300 "Checking whether acquisition has finished."
-            NativeApi.CTCStatus (index picoHarp300, &result)
-            |> Status.checkStatusAndReturn (result <> 0)
-            |> logQueryResult
-                (sprintf "Successfully checked acquisition finished: %A.")
-                (sprintf "Failed to check acquisition status due to error: %A.")
-            |> AsyncChoice.liftChoice
+            let workflow = asyncChoice{        
+                let mutable result = 0
+                logDevice picoHarp300 "Checking whether acquisition has finished."
+                do! NativeApi.CTCStatus (index picoHarp300, &result) |> Status.Logging.logError picoHarp300
+                return result}
+            workflow
 
         /// Stops a measurement 
         let stop picoHarp300 = 

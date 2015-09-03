@@ -24,6 +24,7 @@ module internal Status =
         do! checkStatus status
         return value }
 
+
     [<AutoOpen>]
     module internal Logging = 
 
@@ -51,3 +52,15 @@ module internal Status =
         
         /// Extract the device index 
         let internal index (PicoHarp300 h) = h
+        
+        /// Checks error and logs the result. 
+        let logError picoHarp300 errorCode = 
+             errorCode 
+             |> checkStatus
+             |> logDeviceOpResult picoHarp300
+                 ("Success")
+                 (sprintf "Failed: %A.")
+             |> AsyncChoice.liftChoice
+                
+    
+
