@@ -111,7 +111,7 @@ module Streaming =
                     ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
                     match histResidual, tag with
                         | None, tag when not <| TagHelper.isMarker tag   -> histogramState
-                        | None, tag                                      -> printfn "GOT A TRIGGER. %A, %d" tag System.Threading.Thread.CurrentThread.ManagedThreadId; (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                        | None, tag                                      -> (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
                         | Some residual, tag when TagHelper.isPhoton tag -> 
                             match (histogramBin residual parameters tag) with
                                 | Some bin                      -> (histSequence, Some <| (addPhoton residual bin))
