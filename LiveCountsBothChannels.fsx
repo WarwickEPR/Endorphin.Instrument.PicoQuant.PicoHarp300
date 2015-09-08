@@ -41,10 +41,10 @@ let refreshRate = 20.0
 let windowSize = 200
 
 let mutable mutableString : string = "Both"
-let baseline = 695000
+let baseline = 0
 let baselineString = string(baseline)
 
-let form = new Form(Text = baselineString, Visible = true, TopMost = true, Width = 600, Height = 600)
+let form = new Form(Text = baselineString, Visible = true, Width = 600, Height = 600)
 let uiContext = SynchronizationContext.Current
 
 let click0 = new Event<_>()
@@ -52,8 +52,8 @@ let click1 = new Event<_>()
 let clickBoth = new Event<_>()
 
 let toolBar = new ToolBar ()
-let button1 = new ToolBarButton(Text = "Channel 1" )
-let button2 = new ToolBarButton(Text = "Channel 2" )
+let button1 = new ToolBarButton(Text = "Channel 0" )
+let button2 = new ToolBarButton(Text = "Channel 1" )
 let button3 = new ToolBarButton(Text = "Both")
 let button4 = new ToolBarButton(Text = "Close")
 
@@ -62,7 +62,11 @@ toolBar.Buttons.AddRange [|button1; button2; button3; button4|]
 toolBar.ButtonClick.Add (fun button -> if toolBar.Buttons.IndexOf (button.Button) = 0 then click0.Trigger()
                                        elif toolBar.Buttons.IndexOf (button.Button) = 1 then click1.Trigger() 
                                        elif toolBar.Buttons.IndexOf (button.Button) = 2 then clickBoth.Trigger() 
-                                       elif toolBar.Buttons.IndexOf (button.Button) = 3 then form.Close ()
+                                       elif toolBar.Buttons.IndexOf (button.Button) = 3 then let close picoHarp300 = asyncChoice{
+                                                                                                do! PicoHarp.Initialise.closeDevice picoHarp300
+                                                                                                }
+                                                                                             close handle |> Async.RunSynchronously |> ignore 
+                                                                                             form.Close ()
                                        )  
 click0.Publish.Add(fun _ -> mutableString <- "Channel0")
 click1.Publish.Add(fun _ -> mutableString <- "Channel1")
@@ -88,8 +92,7 @@ let showChart channel_0 channel_1 (channel) (initialcount: int*int) = async {
                     |> Observable.observeOnContext uiContext
                     |> LiveChart.FastLine]
                 |> Chart.WithXAxis(Title = "Time")
-                |> Chart.WithYAxis(Title = "Counts")
-             
+                |> Chart.WithYAxis(Title = "Count Rate", LabelStyle = ChartTypes.LabelStyle.Create(Format="0.###E+0"))
             
             new ChartTypes.ChartControl(chart3, Dock = DockStyle.Fill)
             |> form.Controls.Add
@@ -101,7 +104,7 @@ let showChart channel_0 channel_1 (channel) (initialcount: int*int) = async {
                          |> Observable.observeOnContext uiContext
                          |> LiveChart.FastLine
                          |> Chart.WithXAxis(Title = "Time")
-                         |> Chart.WithYAxis(Title = "Count Rate")
+                         |> Chart.WithYAxis(Title = "Count Rate", LabelStyle = ChartTypes.LabelStyle.Create(Format="0.###E+0"))
             
             new ChartTypes.ChartControl(chart1, Dock = DockStyle.Fill)
             |> form.Controls.Add
@@ -113,7 +116,7 @@ let showChart channel_0 channel_1 (channel) (initialcount: int*int) = async {
                          |> Observable.observeOnContext uiContext
                          |> LiveChart.FastLine
                          |> Chart.WithXAxis(Title = "Time")
-                         |> Chart.WithYAxis(Title = "Counts")
+                         |> Chart.WithYAxis(Title = "Count Rate", LabelStyle = ChartTypes.LabelStyle.Create(Format="0.###E+0"))
             
             new ChartTypes.ChartControl(chart2, Dock = DockStyle.Fill)
             |> form.Controls.Add
@@ -140,7 +143,7 @@ let channeltoString = function
     | _ -> failwithf "Not a channel."
 
 /// Generates chart data. 
-let rec liveCounts (duration:int) (time:int) handle (channel: string) One Two= asyncChoice {
+let rec liveCounts (duration:int) (time:int) handle (channel: string) one two= asyncChoice {
      if mutableString = channel then  
         // let! statments retrievethe count rates for channel one and channel two. 
         let! channel_0 = PicoHarp.Query.getCountRate handle 0
@@ -158,7 +161,7 @@ let rec liveCounts (duration:int) (time:int) handle (channel: string) One Two= a
                 channelOneEvent.Trigger channel_1
         if duration > 0 then
            do! Async.Sleep 100 |> AsyncChoice.liftAsync
-           do! liveCounts  (duration - 1) (time + 1) handle channel One Two
+           do! liveCounts  (duration - 1) (time + 1) handle channel one two
         else 
            do! PicoHarp.Initialise.closeDevice handle 
     else 
@@ -179,7 +182,7 @@ let rec liveCounts (duration:int) (time:int) handle (channel: string) One Two= a
                 channelOneEvent.Trigger channel_1
         if duration > 0 then
            do! Async.Sleep 100 |> AsyncChoice.liftAsync
-           do! liveCounts  (duration - 1) (time + 1) handle mutableString One Two
+           do! liveCounts  (duration - 1) (time + 1) handle mutableString one two
         else 
            do! PicoHarp.Initialise.closeDevice handle 
     }

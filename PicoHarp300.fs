@@ -111,6 +111,13 @@ module PicoHarp =
             return picoharp
             }
 
+        /// Re-open connection to device and perform calibration
+        let reOpen picoharp mode  = asyncChoice {
+            do! openDevice picoharp 
+            do! setMode picoharp mode
+            do! calibrate picoharp
+            }
+
         /// Closes the PicoHarp.
         let closeDevice picoHarp300 =
             logDevice picoHarp300 "Closing device."
