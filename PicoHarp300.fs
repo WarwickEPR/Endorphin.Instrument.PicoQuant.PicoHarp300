@@ -12,14 +12,14 @@ module PicoHarp =
     /// Checks return value of the NativeApi function and converts to a success or gives an error message.
     let internal checkStatus = 
         function
-        | Error.Ok -> succeed ()
-        | Error.Error string -> fail string 
+        | Error.Ok -> Choice.succeed ()
+        | Error.Error string -> Choice.fail string 
 
     /// Check the value of set flags
     let internal checkFlags = 
         function
-        | Flag.Ok -> succeed ()
-        | Flag.Flag string -> fail string
+        | Flag.Ok -> Choice.succeed ()
+        | Flag.Flag string -> Choice.fail string
 
     let internal checkStatusAndReturn value status = choice {
         do! checkStatus status
