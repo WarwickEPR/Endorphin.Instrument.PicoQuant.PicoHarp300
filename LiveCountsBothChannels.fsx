@@ -25,6 +25,52 @@ open System.Reactive.Linq
 open System.Reactive
 open System
 
+
+module internal Support =
+    let addToEvent (source : IEvent<_>) callback =
+        source |> Event.add callback 
+
+
+    let addToObservable (source : IObservable<_>) callback =
+        source |> Observable.add callback
+
+    let bufferMapiCountOverlapped count mapping add =
+        let output = new Event<_>()
+        let mutable buffer = Array.zeroCreate count
+        let mutable didLoop = false
+        let mutable index = 0
+        let mutable bufferIndex = 0
+
+        add (fun x -> lock buffer (fun () ->
+            buffer.[bufferIndex] <- mapping index x
+            index <- index + 1
+            bufferIndex <- (bufferIndex + 1) % count
+            
+            if bufferIndex = 0 then didLoop <- true
+            if didLoop then seq { for i in 0 .. count - 1 -> buffer.[(bufferIndex + i) % count] }
+            else            seq { for i in 0 .. bufferIndex - 1 -> (buffer).[i] }
+            |> Array.ofSeq
+            |> output.Trigger))
+
+        output.Publish
+
+[<RequireQualifiedAccess; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Observable =
+
+    /// Build a new observable, applying the given mapping to each element in the source observable and
+    /// its zero-based integer index, then collecting the values into a buffer of the specified size. At
+    /// each occurrence, the output event is the contents of the buffer which contains the most recent
+    /// values up to its specified size.
+    let bufferMapiCountOverlapped count mapping source =
+        Support.addToObservable source |> Support.bufferMapiCountOverlapped count mapping
+
+
+module AsyncChoice =
+    let liftAsync comp = async {
+        let! result = comp
+        return (Choice.succeed result) }
+
+
 //log4net.Config.BasicConfigurator.Configure()
 
 /// Contains histogram parameters. 
@@ -92,7 +138,7 @@ let showChart channel_0 channel_1 (channel) (initialcount: int*int) = async {
                     |> Observable.observeOnContext uiContext
                     |> LiveChart.FastLine]
                 |> Chart.WithXAxis(Title = "Time")
-                |> Chart.WithYAxis(Title = "Count Rate", LabelStyle = ChartTypes.LabelStyle.Create(Format="0.###E+0"))
+                |> Chart.WithYAxis(Title = "Count Rate", LabelStyle = ChartTypes.LabelStyle.Create(Format="0.###E+0", FontSize = 20.))
             
             new ChartTypes.ChartControl(chart3, Dock = DockStyle.Fill)
             |> form.Controls.Add
