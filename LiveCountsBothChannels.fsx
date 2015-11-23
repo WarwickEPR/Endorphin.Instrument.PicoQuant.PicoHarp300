@@ -103,6 +103,7 @@ let button2 = new ToolBarButton(Text = "Channel 1" )
 let button3 = new ToolBarButton(Text = "Both")
 let button4 = new ToolBarButton(Text = "Close")
 
+toolBar.Height <- 50
 toolBar.Buttons.AddRange [|button1; button2; button3; button4|]
 
 toolBar.ButtonClick.Add (fun button -> if toolBar.Buttons.IndexOf (button.Button) = 0 then click0.Trigger()
@@ -118,7 +119,18 @@ click0.Publish.Add(fun _ -> mutableString <- "Channel0")
 click1.Publish.Add(fun _ -> mutableString <- "Channel1")
 clickBoth.Publish.Add(fun _ -> mutableString <- "Both")
 
-form.Controls.Add toolBar  
+let splitContainer = new SplitContainer()
+splitContainer.SplitterDistance <- 3
+splitContainer.IsSplitterFixed <- false
+splitContainer.FixedPanel <- FixedPanel.Panel1
+splitContainer.Dock <- DockStyle.Fill
+splitContainer.Orientation <- Orientation.Horizontal
+
+form.Controls.Add splitContainer
+splitContainer.Panel1.Controls.Add toolBar
+
+
+//form.Controls.Add toolBar  
 
 let showChart channel_0 channel_1 (channel) (initialcount: int*int) = async {
     // Charts both channel one and channel two count rates.  
@@ -141,7 +153,7 @@ let showChart channel_0 channel_1 (channel) (initialcount: int*int) = async {
                 |> Chart.WithYAxis(Title = "Count Rate", LabelStyle = ChartTypes.LabelStyle.Create(Format="0.###E+0", FontSize = 20.))
             
             new ChartTypes.ChartControl(chart3, Dock = DockStyle.Fill)
-            |> form.Controls.Add
+            |> splitContainer.Panel2.Controls.Add //form.Controls.Add
         // Charts channel one's count rate. 
         elif channel = Channel1 then
             let chart1 = channel_1
