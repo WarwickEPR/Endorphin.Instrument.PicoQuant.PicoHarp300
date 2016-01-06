@@ -5,7 +5,6 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
 open Endorphin.Core
-open ExtCore.Control
 
 /// For functions in the module Native the argument int devidx represents the PicoHarps device index. 
 /// The device index is always zero when the PicoHarp is being used in isolation. 

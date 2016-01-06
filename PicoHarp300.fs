@@ -3,9 +3,9 @@
 open Microsoft.FSharp.NativeInterop
 open System.Runtime.InteropServices
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
+open System
 open System.Text
 open Endorphin.Core
-open ExtCore.Control
 
 module PicoHarp = 
     
@@ -13,7 +13,7 @@ module PicoHarp =
     let internal checkStatus = 
         function
         | Error.Ok -> Choice.succeed ()
-        | Error.Error string -> Choice.fail string 
+        | Error.Error str -> Choice.fail (Exception str)
 
     /// Check the value of set flags
     let internal checkFlags = 
@@ -79,7 +79,9 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300 
                 ("Successfully opened the PicoHarp.")
                 (sprintf "Failed to open the PicoHarp: %A.")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
+
 
         /// Calibrates the PicoHarp. 
         let private calibrate picoHarp300 = 
@@ -89,7 +91,8 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300  
                 ("Successfully calibrated the device.")
                 (sprintf "Failed to calibrate the device: %A.")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// Sets the PicoHarps mode.
         let setMode picoHarp300 (mode:Mode) = 
@@ -100,23 +103,22 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 ("Successfully set the device mode.")
                 (sprintf "Failed to set the device mode: %A.")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// Open connection to device and perform calibration
-        let initialise serial mode  = asyncChoice {
+        let initialise serial mode  = async {
             let picoharp = picoHarp serial
             do! openDevice picoharp 
             do! setMode picoharp mode
             do! calibrate picoharp
-            return picoharp
-            }
+            return picoharp }
 
         /// Re-open connection to device and perform calibration
-        let reOpen picoharp mode  = asyncChoice {
+        let reOpen picoharp mode  = async {
             do! openDevice picoharp 
             do! setMode picoharp mode
-            do! calibrate picoharp
-            }
+            do! calibrate picoharp }
 
         /// Closes the PicoHarp.
         let closeDevice picoHarp300 =
@@ -126,7 +128,8 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 ("Successfully closed the PicoHarp.")
                 (sprintf "Failed to close the PicoHarp: %A.")  
-            |> AsyncChoice.liftChoice 
+            |> Choice.bindOrRaise
+            |> async.Return 
                     
     module Information = 
             
@@ -135,11 +138,12 @@ module PicoHarp =
             let serial = StringBuilder (8)
             logDevice picoHarp300 "Retrieving device serial number."
             NativeApi.GetSerialNumber (index picoHarp300 , serial)
-            |> checkStatus
+            |> checkStatusAndReturn ( serial.ToString() )
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved the device (%A) serial number.")
                 (sprintf "Failed to retrieve the device serial number: %A.")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// Returens the PicoHarp's model number, part number ans version.
         let private hardwareInformation picoHarp300 = 
@@ -148,11 +152,12 @@ module PicoHarp =
             let vers    = StringBuilder (8)
             logDevice picoHarp300 "Retrieving device hardware information: model number, part number, version."
             NativeApi.GetHardwareInfo (index picoHarp300, model, partnum, vers)
-            |> checkStatus 
+            |> checkStatusAndReturn ((model.ToString(), partnum.ToString(), vers.ToString()))
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved the device (%A) hardware information." )
                 (sprintf "Failed to retrieve the device hardware information: %A")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// Logs PicoHarp's model number. 
         let model picoHarp300 = 
@@ -171,12 +176,13 @@ module PicoHarp =
             let mutable resolution : double = Unchecked.defaultof<_>
             logDevice picoHarp300 "Retrieving device base resolution."
             NativeApi.GetResolution(index picoHarp300 , &resolution) 
-            |> checkStatus
+            |> checkStatusAndReturn resolution
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved the device base resolution.")
                 (sprintf "Failed to retrieve the device base resolution: %A")
-            |> AsyncChoice.liftChoice
-        
+            |> Choice.bindOrRaise
+            |> async.Return  
+                  
     module SyncChannel = 
             
         /// Sets the rate divider of the sync channel.
@@ -188,7 +194,8 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 ("Successfully set the device sync channel divider.")
                 (sprintf "Failed to set the device sync channel divider: %A")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// Sets the offset of the sync/channel 0.
         let SetSyncOffset picoHarp300 (sync:SyncParameters) = 
@@ -199,7 +206,8 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 (sprintf "Successfully set the device sync offset.")
                 (sprintf "Failed to set the device sync offset: %A")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
     module CFD = 
         
@@ -233,45 +241,47 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 ("Successfully initialised channel's CFD.")
                 (sprintf "Failed to initialis channel's CFD: %A")
-            |> AsyncChoice.liftChoice
-
+            |> Choice.bindOrRaise
+            |> async.Return
     
     /// measurement functions which are useful in both histogramming and TTTR mode
     module Query =
         /// Returns time period over which experiment was running. 
         let getMeasurementTime picoHarp300 =
-            let mutable elasped : double = Unchecked.defaultof<_>
+            let mutable elapsed : double = Unchecked.defaultof<_>
             logDevice picoHarp300 "Retrieving time passed since the start of histogram measurements."
-            NativeApi.GetElapsedMeasTime (index picoHarp300, &elasped) 
-            |> checkStatus
+            NativeApi.GetElapsedMeasTime (index picoHarp300, &elapsed) 
+            |> checkStatusAndReturn elapsed
             |> logQueryResult 
                 (sprintf "Successfully retrieved measurement time: %A")
                 (sprintf "Failed to retrieve measurement time: %A") 
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
         let getCTCStatus picoHarp300 = 
             let mutable ctcStatus : int = Unchecked.defaultof<_>
             logDevice picoHarp300 "Checking CTC status" 
             NativeApi.CTCStatus (index picoHarp300, &ctcStatus)   
-            |> checkStatus
+            |> checkStatusAndReturn ctcStatus
             |> logQueryResult 
                 (sprintf "Successfully retrieved CTC status: %A")
                 (sprintf "Failed to retrieve CTC status: %A") 
-            |> AsyncChoice.liftChoice
-        
+            |> Choice.bindOrRaise
+            |> async.Return
+                    
         /// Writes channel count rate to a mutable int.  
         let getCountRate picoHarp300 (channel:int) =
             let mutable rate : int = Unchecked.defaultof<_>
             logDevice picoHarp300 "Retrieving channel count rate."
             GetCountRate (index picoHarp300, channel, &rate)
-            |> checkStatusAndReturn (rate)
+            |> checkStatusAndReturn rate
             |> logDeviceOpResult picoHarp300
                 ("Successfully retrieved channel count rate.")
                 (sprintf "Failed to retrieve channel count rate: %A")
-            |> AsyncChoice.liftChoice
-        
-        
+            |> Choice.bindOrRaise
+            |> async.Return
+                    
         let triggerHoldOff picoHarp300 deadTime = 
             logDevice picoHarp300 "Setting trigger hold-off"
             NativeApi.SetHoldOffTime (index picoHarp300, deadTime)
@@ -279,7 +289,8 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 ("Successfully set hold-off.")
                 (sprintf "Failed to set hold-off: %A.")
-            |> AsyncChoice.liftChoice        
+            |> Choice.bindOrRaise
+            |> async.Return
 
     module internal Acquisition = 
         /// Starts a measurement
@@ -291,15 +302,17 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 ("Successfully set acquisition time and started TTTR measurement") 
                 (sprintf "Failed to start: %A.")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// Read TTTR FIFO buffer
         let readFifoBuffer picoHarp300 (streamingBuffer : StreamingBuffer) = 
             let mutable counts = Unchecked.defaultof<_>
             NativeApi.ReadFiFo(index picoHarp300, streamingBuffer.Buffer, TTTRMaxEvents, &counts)
-            |> checkStatusAndReturn (counts)
-            |> AsyncChoice.liftChoice
-    
+            |> checkStatusAndReturn counts
+            |> Choice.bindOrRaise
+            |> async.Return
+                
         let checkMeasurementFinished picoHarp300 =
             let mutable result = 0
             logDevice picoHarp300 "Checking whether acquisition has finished."
@@ -308,7 +321,8 @@ module PicoHarp =
             |> logQueryResult
                 (sprintf "Successfully checked acquisition finished: %A.")
                 (sprintf "Failed to check acquisition status due to error: %A.")
-            |> AsyncChoice.liftChoice
+            |> Choice.bindOrRaise
+            |> async.Return
 
         /// Stops a measurement 
         let stop picoHarp300 = 
@@ -318,5 +332,5 @@ module PicoHarp =
             |> logDeviceOpResult picoHarp300
                 ("Successfully ended measurement.")
                 (sprintf "Failed to end measurement: %A.")
-            |> AsyncChoice.liftChoice
-    
+            |> Choice.bindOrRaise
+            |> async.Return    

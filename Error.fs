@@ -2,16 +2,6 @@
 
 [<AutoOpen>]
 module internal Error = 
-    
-    module AsyncChoice =
-        open Endorphin.Core
-
-        let liftAsync comp = async {
-            let! result = comp
-            return (Choice.succeed result) }
-
-        let liftChoice (choice : Choice<'T, 'U>) = async { return choice }
-
     /// Error code for the PicoHarp 300.
     type ErrorCode = 
         | NoError               =  0

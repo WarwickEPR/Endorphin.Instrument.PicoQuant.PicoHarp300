@@ -3,7 +3,6 @@
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
 open Endorphin.Core
-open ExtCore.Control
 
 module internal Quantities = 
     

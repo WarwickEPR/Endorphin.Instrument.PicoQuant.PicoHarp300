@@ -5,9 +5,10 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
 open Endorphin.Core
-open ExtCore.Control
+//open ExtCore.Control
 open System
 open FSharp.Control.Reactive
+open Endorphin.Core.ObservableHelpers
 
 module Streaming = 
     type private Tag = uint32
@@ -17,15 +18,20 @@ module Streaming =
     type StreamStatus = 
         | PreparingStream
         | Streaming
-        | FinishedStream of options : StreamStopOptions
+        | FinishedStream of didAutoStop : bool
         | FailedStream of error : string
-        | CancelledStream of exn : OperationCanceledException
+        | CancelledStream
 
     type internal TagStream = { Tags                 : seq<Tag>
                                 HistogramParameters  : StreamingParameters }
 
     /// List of bin number and number of counts in bin
     type Histogram = { Histogram : (int * int) list }
+
+    type StreamResult =
+        | StreamCompleted
+        | StreamError of exn
+        | StreamCancelled
 
     type StreamingAcquisition = 
         private { Parameters          : StreamingParameters
@@ -38,7 +44,8 @@ module Streaming =
 
     type HistogramAcquisitionHandle = 
         private { Acquisition   : StreamingAcquisition
-                  WaitToFinish  : AsyncChoice<unit, string> }
+                  WaitToFinish  : Async<StreamResult> }
+
     type internal HistogramResidual =
                  {  WorkingHistogram    : int list
                     OverflowMarkers     : int
@@ -161,9 +168,9 @@ module Streaming =
             acquisition.StatusChanged.Publish
             |> Observable.fromNotificationEvent
               
-        let private startStreaming acquisition = asyncChoice { 
+        let private startStreaming acquisition = async { 
             let! __ = PicoHarp.Acquisition.start acquisition.PicoHarp (Duration_s (1.0<s> * 100.0 * 3600.0))
-            acquisition.StatusChanged.Trigger (Endorphin.Core.ObservableHelpers.Next <| Streaming) }
+            acquisition.StatusChanged.Trigger (Next <| Streaming) }
     
         let private copyBufferAndFireEvent acquisition counts =
             let buffer = Array.zeroCreate counts
@@ -171,7 +178,7 @@ module Streaming =
             let tagSequence = Seq.ofArray buffer
             acquisition.TagsAvailable.Trigger { Tags = tagSequence; HistogramParameters = acquisition.Parameters }
 
-        let rec private pollUntilFinished acquisition = asyncChoice {
+        let rec private pollUntilFinished acquisition = async {
             if not acquisition.StopCapability.IsCancellationRequested then
                 let! counts = 
                     PicoHarp.Acquisition.readFifoBuffer 
@@ -186,73 +193,72 @@ module Streaming =
 
                 do! pollUntilFinished acquisition }
 
-        let start acquisition : AsyncChoice<HistogramAcquisitionHandle, string> =           
+        let startWithCancellationToken acquisition cancellationToken =           
             if acquisition.StopCapability.IsCancellationRequested then
                 failwith "Cannot start an acquisition which has already been stopped."
 
-            let finishAcquisition cont acquisitionResult = Async.StartImmediate <| async {
-                let! stopResult = PicoHarp.Acquisition.stop acquisition.PicoHarp 
-                match acquisitionResult, stopResult with
-                | Success (), Success () ->
-                    acquisition.StatusChanged.Trigger 
-                        (Endorphin.Core.ObservableHelpers.Next 
-                        <| FinishedStream acquisition.StopCapability.Options)
-                    acquisition.StatusChanged.Trigger
-                        (Endorphin.Core.ObservableHelpers.Completed)
+            let resultChannel = new ResultChannel<_>()
 
-                    cont (Choice.succeed ())
-                | _, Failure f ->
-                    let error = sprintf "Acquisition failed to stop: %s" f
-                    acquisition.StatusChanged.Trigger 
-                        (Endorphin.Core.ObservableHelpers.Next
-                        <| FailedStream error)
-                    acquisition.StatusChanged.Trigger
-                        (Endorphin.Core.ObservableHelpers.Error (Exception error))
+            let finishAcquisition () = 
+                Async.StartWithContinuations(
+                    PicoHarp.Acquisition.stop acquisition.PicoHarp,
+                    (fun () ->
+                        acquisition.StatusChanged.Trigger 
+                            (Next 
+                            <| FinishedStream acquisition.StopCapability.Options.AcquisitionDidAutoStop)
+                        acquisition.StatusChanged.Trigger Completed),
+                    (fun stopExn ->
+                        let error = sprintf "Acquisition failed to stop: %s" stopExn.Message
+                        acquisition.StatusChanged.Trigger 
+                            (Next
+                            <| FailedStream error)
+                        acquisition.StatusChanged.Trigger
+                            (Error (Exception error))),
+                    ignore )
 
-                    cont (Choice.fail error)
-                | Failure f, _ ->
-                    acquisition.StatusChanged.Trigger
-                        (Endorphin.Core.ObservableHelpers.Next 
-                        <| FailedStream f)
-                    acquisition.StatusChanged.Trigger
-                        (Endorphin.Core.ObservableHelpers.Error (Exception f))
-                    cont (Choice.fail f) }
-            
-            let stopAcquisitionAfterCancellation ccont econt exn = Async.StartImmediate <| async { 
-                let! stopResult =  PicoHarp.Acquisition.stop acquisition.PicoHarp
-                match stopResult with
-                | Success () ->
-                    acquisition.StatusChanged.Trigger 
-                        (Endorphin.Core.ObservableHelpers.Next
-                        <| CancelledStream exn)
-                    acquisition.StatusChanged.Trigger
-                        (Endorphin.Core.ObservableHelpers.Completed)
-                    ccont exn
-                | Failure f ->
-                    let error = sprintf "Acquisition failed to stop after cancellation: %s" f
-                    acquisition.StatusChanged.Trigger 
-                        (Endorphin.Core.ObservableHelpers.Next
-                        <| FailedStream error)
-                    acquisition.StatusChanged.Trigger
-                        (Endorphin.Core.ObservableHelpers.Error (Exception error))
-                    econt (Exception error) }
+            let stopAcquisitionAfterError exn = 
+                Async.StartWithContinuations (
+                    PicoHarp.Acquisition.stop acquisition.PicoHarp, 
+                    (fun () ->
+                        acquisition.StatusChanged.Trigger (Error exn)
+                        resultChannel.RegisterResult (StreamError exn)),
+                    (fun stopExn ->
+                        acquisition.StatusChanged.Trigger (Error exn)
+                        resultChannel.RegisterResult (StreamError stopExn)),
+                    ignore )
 
-            let acquisitionWorkflow cancellationToken =
-                Async.FromContinuations (fun (cont, econt, ccont) ->
-                    Async.StartWithContinuations(
-                        asyncChoice {
-                            do! startStreaming acquisition
-                            do! pollUntilFinished acquisition }, 
-                    
-                        finishAcquisition cont, econt, stopAcquisitionAfterCancellation ccont econt,
-                        cancellationToken))
+            let stopAcquisitionAfterCancellation _ = 
+                Async.StartWithContinuations(
+                    PicoHarp.Acquisition.stop acquisition.PicoHarp,
+                    (fun () ->
+                        acquisition.StatusChanged.Trigger (Next <| CancelledStream)
+                        acquisition.StatusChanged.Trigger Completed
+                        resultChannel.RegisterResult StreamCancelled),
+                    (fun stopExn ->
+                        acquisition.StatusChanged.Trigger (Error stopExn)
+                        resultChannel.RegisterResult (StreamError stopExn)),
+                    ignore)
 
-            async {
-                let! cancellationToken = Async.CancellationToken
-                let! waitToFinish = Async.StartChild (acquisitionWorkflow cancellationToken)
-                return { Acquisition = acquisition ; WaitToFinish = waitToFinish } }
-            |> AsyncChoice.liftAsync
+            let acquisitionWorkflow = 
+                async {
+                    do! startStreaming acquisition
+                    do! pollUntilFinished acquisition }
+
+            Async.StartWithContinuations (
+                acquisitionWorkflow,
+                finishAcquisition,
+                stopAcquisitionAfterError,
+                stopAcquisitionAfterCancellation,
+                cancellationToken)
+                
+            { Acquisition = acquisition; WaitToFinish = resultChannel.AwaitResult () }
         
+        let start acquisition = startWithCancellationToken acquisition Async.DefaultCancellationToken
+
+        let startAsChild acquisition = async {
+            let! ct = Async.CancellationToken
+            return startWithCancellationToken acquisition ct }
+
         let waitToFinish acquisitionHandle = acquisitionHandle.WaitToFinish   
               
         let stop acquisitionHandle =
