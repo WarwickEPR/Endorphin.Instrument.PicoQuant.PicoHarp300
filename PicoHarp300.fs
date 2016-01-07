@@ -7,6 +7,11 @@ open System
 open System.Text
 open Endorphin.Core
 
+module internal Async = 
+    let ReturnFromThreadPool x = async {
+        do! Async.SwitchToThreadPool ()
+        return x }
+
 module PicoHarp = 
     
     /// Checks return value of the NativeApi function and converts to a success or gives an error message.
@@ -49,6 +54,7 @@ module PicoHarp =
     
     /// Extract the device index 
     let internal index (PicoHarp300 h) = h
+
     
     module Initialise =     
        
@@ -80,7 +86,7 @@ module PicoHarp =
                 ("Successfully opened the PicoHarp.")
                 (sprintf "Failed to open the PicoHarp: %A.")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
 
         /// Calibrates the PicoHarp. 
@@ -92,7 +98,7 @@ module PicoHarp =
                 ("Successfully calibrated the device.")
                 (sprintf "Failed to calibrate the device: %A.")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// Sets the PicoHarps mode.
         let setMode picoHarp300 (mode:Mode) = 
@@ -104,7 +110,7 @@ module PicoHarp =
                 ("Successfully set the device mode.")
                 (sprintf "Failed to set the device mode: %A.")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// Open connection to device and perform calibration
         let initialise serial mode  = async {
@@ -129,7 +135,7 @@ module PicoHarp =
                 ("Successfully closed the PicoHarp.")
                 (sprintf "Failed to close the PicoHarp: %A.")  
             |> Choice.bindOrRaise
-            |> async.Return 
+            |> Async.ReturnFromThreadPool 
                     
     module Information = 
             
@@ -143,7 +149,7 @@ module PicoHarp =
                 ("Successfully retrieved the device (%A) serial number.")
                 (sprintf "Failed to retrieve the device serial number: %A.")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// Returens the PicoHarp's model number, part number ans version.
         let private hardwareInformation picoHarp300 = 
@@ -157,7 +163,7 @@ module PicoHarp =
                 ("Successfully retrieved the device (%A) hardware information." )
                 (sprintf "Failed to retrieve the device hardware information: %A")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// Logs PicoHarp's model number. 
         let model picoHarp300 = 
@@ -181,7 +187,7 @@ module PicoHarp =
                 ("Successfully retrieved the device base resolution.")
                 (sprintf "Failed to retrieve the device base resolution: %A")
             |> Choice.bindOrRaise
-            |> async.Return  
+            |> Async.ReturnFromThreadPool  
                   
     module SyncChannel = 
             
@@ -195,7 +201,7 @@ module PicoHarp =
                 ("Successfully set the device sync channel divider.")
                 (sprintf "Failed to set the device sync channel divider: %A")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// Sets the offset of the sync/channel 0.
         let SetSyncOffset picoHarp300 (sync:SyncParameters) = 
@@ -207,7 +213,7 @@ module PicoHarp =
                 (sprintf "Successfully set the device sync offset.")
                 (sprintf "Failed to set the device sync offset: %A")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
     module CFD = 
         
@@ -242,7 +248,7 @@ module PicoHarp =
                 ("Successfully initialised channel's CFD.")
                 (sprintf "Failed to initialis channel's CFD: %A")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
     
     /// measurement functions which are useful in both histogramming and TTTR mode
     module Query =
@@ -256,7 +262,7 @@ module PicoHarp =
                 (sprintf "Successfully retrieved measurement time: %A")
                 (sprintf "Failed to retrieve measurement time: %A") 
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// If 0 is returned acquisition time is still running, >0 then acquisition time has finished. 
         let getCTCStatus picoHarp300 = 
@@ -268,7 +274,7 @@ module PicoHarp =
                 (sprintf "Successfully retrieved CTC status: %A")
                 (sprintf "Failed to retrieve CTC status: %A") 
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
                     
         /// Writes channel count rate to a mutable int.  
         let getCountRate picoHarp300 (channel:int) =
@@ -280,7 +286,7 @@ module PicoHarp =
                 ("Successfully retrieved channel count rate.")
                 (sprintf "Failed to retrieve channel count rate: %A")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
                     
         let triggerHoldOff picoHarp300 deadTime = 
             logDevice picoHarp300 "Setting trigger hold-off"
@@ -290,7 +296,7 @@ module PicoHarp =
                 ("Successfully set hold-off.")
                 (sprintf "Failed to set hold-off: %A.")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
     module internal Acquisition = 
         /// Starts a measurement
@@ -303,7 +309,7 @@ module PicoHarp =
                 ("Successfully set acquisition time and started TTTR measurement") 
                 (sprintf "Failed to start: %A.")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// Read TTTR FIFO buffer
         let readFifoBuffer picoHarp300 (streamingBuffer : StreamingBuffer) = 
@@ -311,7 +317,7 @@ module PicoHarp =
             NativeApi.ReadFiFo(index picoHarp300, streamingBuffer.Buffer, TTTRMaxEvents, &counts)
             |> checkStatusAndReturn counts
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
                 
         let checkMeasurementFinished picoHarp300 =
             let mutable result = 0
@@ -322,7 +328,7 @@ module PicoHarp =
                 (sprintf "Successfully checked acquisition finished: %A.")
                 (sprintf "Failed to check acquisition status due to error: %A.")
             |> Choice.bindOrRaise
-            |> async.Return
+            |> Async.ReturnFromThreadPool
 
         /// Stops a measurement 
         let stop picoHarp300 = 
@@ -333,4 +339,4 @@ module PicoHarp =
                 ("Successfully ended measurement.")
                 (sprintf "Failed to end measurement: %A.")
             |> Choice.bindOrRaise
-            |> async.Return    
+            |> Async.ReturnFromThreadPool    

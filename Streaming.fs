@@ -152,7 +152,6 @@ module Streaming =
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
         
-        
         let create picoHarp histogramParameters = 
             let tagsAvailable = new Event<TagStream>()
 
@@ -169,7 +168,7 @@ module Streaming =
             |> Observable.fromNotificationEvent
               
         let private startStreaming acquisition = async { 
-            let! __ = PicoHarp.Acquisition.start acquisition.PicoHarp (Duration_s (1.0<s> * 100.0 * 3600.0))
+            do! PicoHarp.Acquisition.start acquisition.PicoHarp (Duration_s (1.0<s> * 100.0 * 3600.0))
             acquisition.StatusChanged.Trigger (Next <| Streaming) }
     
         let private copyBufferAndFireEvent acquisition counts =
@@ -239,18 +238,17 @@ module Streaming =
                         resultChannel.RegisterResult (StreamError stopExn)),
                     ignore)
 
-            let acquisitionWorkflow = 
-                async {
-                    do! startStreaming acquisition
-                    do! pollUntilFinished acquisition }
-
+            let acquisitionWorkflow = async {
+                do! startStreaming acquisition
+                do! pollUntilFinished acquisition }
+            
             Async.StartWithContinuations (
                 acquisitionWorkflow,
                 finishAcquisition,
                 stopAcquisitionAfterError,
                 stopAcquisitionAfterCancellation,
                 cancellationToken)
-                
+            
             { Acquisition = acquisition; WaitToFinish = resultChannel.AwaitResult () }
         
         let start acquisition = startWithCancellationToken acquisition Async.DefaultCancellationToken

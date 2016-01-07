@@ -20,7 +20,7 @@ module Histogram =
                                 ("Successfully set limit for number of counts per histogram channel.")
                                 (sprintf "Failed to set limit for counts per histogram channel: %A")
                             |> Choice.bindOrRaise
-                            |> async.Return
+                            |> Async.ReturnFromThreadPool
                         else failwithf "Invalid count limit, must be between 1 and 65535"
         /// If overflow is switched off then set limit to the maximum and turn off.
         | None ->           PicoHarp.logDevice picoHarp300 "Setting histogram channel count limit to maximum: 65535"
@@ -30,7 +30,7 @@ module Histogram =
                                 (sprintf "Successfully set limit for number of counts per histogram channel to maximum.")
                                 (sprintf "Failed to set limit for counts per histogram channel to maximum: %A")
                             |> Choice.bindOrRaise
-                            |> async.Return    
+                            |> Async.ReturnFromThreadPool    
 
     /// Sets the bin resolution for the histogram.
     let setBinning picoHarp300 (histogram : HistogramParameters) = 
@@ -42,7 +42,7 @@ module Histogram =
             ("Successfully set histogram binning resolution.") 
             (sprintf "Failed to set histogram binning resolution: %A")
         |> Choice.bindOrRaise
-        |> async.Return
+        |> Async.ReturnFromThreadPool
 
     let checkMeasurementFinished picoHarp300 =
         let mutable result = 0
@@ -53,7 +53,7 @@ module Histogram =
             (sprintf "Successfully checked acquisition finished: %A.")
             (sprintf "Failed to check acquisition status due to error: %A.")
         |> Choice.bindOrRaise
-        |> async.Return
+        |> Async.ReturnFromThreadPool
 
     let rec waitToFinishMeasurement picoHarp300 pollDelay = async {
         let! finished = checkMeasurementFinished picoHarp300
@@ -71,7 +71,7 @@ module Histogram =
             ("Successfully set histogram acquisition time and started Measurements") 
             (sprintf "Failed to start: %A.")
         |> Choice.bindOrRaise
-        |> async.Return
+        |> Async.ReturnFromThreadPool
     
     /// Stops histogram mode Measurements. 
     let endMeasurement picoHarp300 = 
@@ -82,7 +82,7 @@ module Histogram =
             ("Successfully ended measurements.")
             (sprintf "Failed to end measurements: %A.")
         |> Choice.bindOrRaise
-        |> async.Return
+        |> Async.ReturnFromThreadPool
         
     /// Writes histogram data into the array histogramData.
     /// The argument block will always be zero unless routing is used. 
@@ -94,7 +94,7 @@ module Histogram =
             ("Successfully retrieved histogram data from device.")
             (sprintf "Failed to retrieve histogram data from device: %A.") 
         |> Choice.bindOrRaise
-        |> async.Return
+        |> Async.ReturnFromThreadPool
 
     /// Clears the histogram from picoHarps memory
     /// The argument block will always be zero unless routing is used. 
@@ -106,7 +106,7 @@ module Histogram =
             ("Cleared histogram data from device memory.")
             (sprintf "Failed to clear histogram data from device memory: %A.")
         |> Choice.bindOrRaise
-        |> async.Return
+        |> Async.ReturnFromThreadPool
     
     /// Ties together functions needed to take a single measurement 
     let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = async { 
