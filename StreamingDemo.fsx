@@ -27,13 +27,20 @@ let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let uiContext = SynchronizationContext.Current
 let cts = new CancellationTokenSource()
 
+let expTime = 5.0<s>
+let binTime = 0.01<ms>
+let startFreq = 2.85
+let endFreq = 2.89
+let spanFreq = endFreq - startFreq
+let numPoints = (Seconds.toMilliseconds expTime) / binTime
+
 form.Closed |> Observable.add (fun _ -> cts.Cancel())
 
 let group_fold key value fold acc seq =
     seq |> List.groupBy key 
         |> List.map (fun (key, seq) -> (key, seq |> List.map value |> List.fold fold acc))
 
-let collateCounts (histogramList : (int * int) list) (histogram : (int * int) list) =
+let collateCounts histogramList histogram =
     match histogramList with
     | [] -> group_fold fst snd (+) 0 histogram
     | histogramList -> group_fold fst snd (+) 0 <| List.append histogramList histogram
@@ -44,10 +51,10 @@ let showHistogramChart acquisition = AsyncChoice.liftAsync <| async {
     let chart = 
         Streaming.Acquisition.HistogramsAvailable acquisition
         |> Observable.observeOnContext uiContext
-        |> Observable.map (fun (histogram) -> List.map (fun (bin, counts) -> (100*bin, counts)) <| histogram.Histogram)
+        |> Observable.map (fun (histogram) -> List.map (fun (bin, counts) -> (startFreq + (spanFreq / numPoints) * float (bin + 1), counts)) <| histogram.Histogram)
         |> Observable.scan collateCounts
-        |> LiveChart.Column
-        |> Chart.WithXAxis(Title = "Time after marker (ns)")
+        |> LiveChart.Line
+        |> Chart.WithXAxis(Title = "Frequency (GHz)")
         |> Chart.WithYAxis(Title = "Counts")
 
     new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
@@ -60,18 +67,19 @@ let printStatusUpdates acquisition =
     |> Observable.add (printfn "%A")
 
 let experiment = asyncChoice {
-    let picoHarp = PicoHarp.Initialise.picoHarp "1020854"
+    //let picoHarp = PicoHarp.Initialise.picoHarp "1020854"
     // do! Histogram.clearmemory picoHarp
-    do! PicoHarp.Initialise.initialiseMode picoHarp T2
+    //do! PicoHarp.Initialise.initialiseMode picoHarp T2
+    let! picoHarp = PicoHarp.Initialise.initialise "1020854" Model.SetupInputChannel.T2
 
     try
-        let acquisition = Streaming.Acquisition.create picoHarp (Streaming.Parameters.create (Duration_ns 1000.0<ns>) (Duration_ns 100000.0<ns>))
+        let acquisition = Streaming.Acquisition.create picoHarp (Streaming.Parameters.create (Duration_ms binTime) (Duration_s expTime))
         do! showHistogramChart acquisition
         printStatusUpdates acquisition
 
         let! acquisitionHandle = Streaming.Acquisition.start acquisition
 
-        do! Async.Sleep 3000 |> AsyncChoice.liftAsync
+        do! Async.Sleep 200000 |> AsyncChoice.liftAsync
         do! Streaming.Acquisition.stopAndFinish acquisitionHandle
 
     finally Async.StartImmediate <| async {

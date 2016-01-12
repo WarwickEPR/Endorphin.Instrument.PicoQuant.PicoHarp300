@@ -50,14 +50,13 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <Compile Include="Status.fs" />
+    <Compile Include="Error.fs" />
     <Compile Include="Flag.fs" />
     <Compile Include="NativeModel.fs" />
     <Compile Include="NativeApi.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Parsing.fs" />
     <Compile Include="Quantities.fs" />
-    <Compile Include="Errors.fs" />
     <Compile Include="PicoHarp300.fs" />
     <Compile Include="Histogram.fs" />
     <Compile Include="Streaming.fs" />
@@ -72,9 +71,6 @@
     <None Include="StreamingDemo.fsx" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="ExtCore">
-      <HintPath>..\Endorphin.Core\bin\Debug\ExtCore.dll</HintPath>
-    </Reference>
     <Reference Include="FSharp.Charting">
       <HintPath>..\packages\FSharp.Charting.0.90.12\lib\net40\FSharp.Charting.dll</HintPath>
       <Private>True</Private>

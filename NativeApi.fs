@@ -5,9 +5,6 @@ open System.Runtime.InteropServices
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
 open Endorphin.Core
-open Endorphin.Core.NationalInstruments
-open Endorphin.Core.String
-open ExtCore.Control
 
 /// For functions in the module Native the argument int devidx represents the PicoHarps device index. 
 /// The device index is always zero when the PicoHarp is being used in isolation. 
@@ -115,3 +112,6 @@ module internal NativeApi =
     [<DllImport(dllName, EntryPoint = "PH_ReadFiFo")>]
     /// Read the TTTR mode buffer in a FIFO fashion
     extern ErrorCode ReadFiFo(int devidx, uint32[] buffer, int count, [<Out>] int& nactual);
+
+    [<DllImport(dllName, EntryPoint = "PH_SetMarkerHoldoffTime")>]
+    extern ErrorCode SetHoldOffTime(int devidx, int holdofftime);

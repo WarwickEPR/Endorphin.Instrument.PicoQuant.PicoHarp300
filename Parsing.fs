@@ -3,9 +3,6 @@
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
 open Endorphin.Core
-open Endorphin.Core.NationalInstruments
-open Endorphin.Core.String
-open ExtCore.Control
 
 [<AutoOpen>]
 module internal Parsing =
