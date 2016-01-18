@@ -99,8 +99,7 @@ module Streaming =
         let extractAllHistograms (parameters : StreamingParameters) (histogramResidual : HistogramResidual option) (tagStream : TagStream) =
             let result = 
                 tagStream.Tags
-                |> Seq.fold (fun histogramState tag -> 
-                    let (histSequence, histResidual) = histogramState
+                |> Seq.fold (fun (histograms, residual) tag -> 
                     /// options for incoming tag:
                     ///     if not currently building a histogram: 
                     ///         if a marker, start new histogram
@@ -114,21 +113,21 @@ module Streaming =
                     ///         if it's a marker:
                     ///             if the marker is the first record since the end of the previous histogram, start a new one
                     ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
-                    match histResidual, tag with
-                        | None, tag when not <| TagHelper.isMarker tag   -> histogramState
-                        | None, tag                                      -> (histSequence, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                    match residual, tag with
+                        | None, tag when not <| TagHelper.isMarker tag   -> (histograms, residual)
+                        | None, tag                                      -> (histograms, Some (histogramResidualCreate <| TagHelper.timestamp tag))
                         | Some residual, tag when TagHelper.isPhoton tag -> 
                             match (histogramBin residual parameters tag) with
-                                | Some bin                      -> (histSequence, Some <| (addPhoton residual bin))
+                                | Some bin                      -> (histograms, Some <| (addPhoton residual bin))
                                 | None                          -> 
                                     let h = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList)
-                                    (Seq.appendSingleton { Histogram = h } histSequence, None)
+                                    ({ Histogram = h } :: histograms, None)
                         | Some residual, tag when TagHelper.isTimeOverflow tag -> 
-                            (histSequence, Some <| incrementTimeOverflowMarkers residual)
+                            (histograms, Some <| incrementTimeOverflowMarkers residual)
                         | Some residual, tag when TagHelper.isMarker tag && (histogramBin residual parameters tag) = None -> 
-                            (Seq.appendSingleton { Histogram = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList) } histSequence, Some <| (histogramResidualCreate <| TagHelper.timestamp tag))
+                            ({ Histogram = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList) } :: histograms, Some <| (histogramResidualCreate <| TagHelper.timestamp tag))
                         /// should only get here if there is residual, and the tag is a marker - this should cause an error!
-                        | _ ->  printfn "STREAMFAIL";failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (Seq.empty, histogramResidual)
+                        | _ ->  printfn "STREAMFAIL";failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (List.empty, histogramResidual)
             result
 
      module internal HistogramEvent = 
@@ -141,11 +140,11 @@ module Streaming =
             let output = 
                 tagsAvailable
                 |> Observable.observeOn eventScheduler 
-                |> Observable.scanInit (Seq.empty, None) (fun (_,residual) tagStream ->
+                |> Observable.scanInit (List.empty, None) (fun (_,residual) tagStream ->
                      TagStreamReader.extractAllHistograms parameters residual tagStream
                     )  // pass each new tag stream and previous residual into the processing function
-                |> Observable.map (fun f -> fst f)
-                |> Observable.collectSeq id // fire event for each histogram
+                |> Observable.map (fst >> List.rev)
+                |> Observable.flatmapSeq Seq.ofList // fire event for each histogram
               
             { Output = output }
            
