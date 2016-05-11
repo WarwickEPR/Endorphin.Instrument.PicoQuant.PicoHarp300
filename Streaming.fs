@@ -103,9 +103,7 @@ module Streaming =
                     ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
                     match residual, tag with
                         | None, tag when not <| TagHelper.isMarker tag || (TagHelper.markerChannel tag <> (uint32 (parseMarkerChannel parameters.MarkerChannel))) -> (histograms, residual)
-                        | None, tag //when (TagHelper.markerChannel tag <> (uint32 (parseMarkerChannel parameters.MarkerChannel))) 
-                                                                         -> printfn "Marker channel: %A" (uint32 (parseMarkerChannel parameters.MarkerChannel));
-                                                                            (histograms, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                        | None, tag                                      -> (histograms, Some (histogramResidualCreate <| TagHelper.timestamp tag))
                         | Some residual, tag when TagHelper.isPhoton tag -> 
                             match (histogramBin residual parameters tag) with
                                 | Some bin                      -> (histograms, Some <| (addPhoton residual bin))
