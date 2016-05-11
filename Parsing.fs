@@ -29,8 +29,13 @@ module internal Parsing =
         | ChannelEnum.Channel0 -> Channel0
         | ChannelEnum.Channel1 -> Channel1
         | channel              -> failwithf "Unexpected channel enum value: %A." channel
-
     
+    let parseMarkerChannel = function
+        | Marker0              -> MarkerChannelEnum.Marker0
+        | Marker1              -> MarkerChannelEnum.Marker1
+        | Marker2              -> MarkerChannelEnum.Marker2
+        | Marker3              -> MarkerChannelEnum.Marker3
+
     /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
     let resolutionEnum = function        
         | Resolution_4ps   -> ResolutionEnum.Resolution_4ps

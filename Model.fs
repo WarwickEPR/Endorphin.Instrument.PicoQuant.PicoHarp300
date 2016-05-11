@@ -67,7 +67,7 @@ module Model =
         | Resolution_512ps                                                                               
     
     ///Histogram requires 3 parameters, number of bins, bin width and aquisition time. Always 65536 bins. 
-    type HistogramParameters = 
+    type T1HistogramParameters = 
         { Resolution      : Resolution
           AcquisitionTime : Duration
           Overflow        : int option }
@@ -84,11 +84,24 @@ module Model =
         [<Literal>]
         let internal TTTROverflowTime = 210698240UL
         
+        type internal MarkerChannelEnum = 
+            | Marker0  = 1u
+            | Marker1  = 2u
+            | Marker2  = 4u
+            | Marker3  = 8u
+        
+        type MarkerChannel = 
+            | Marker0
+            | Marker1
+            | Marker2
+            | Marker3
+
         /// Parameters for the computed TTTR histogram. The marker channel indicates which marker channel will be used to separate experimental shots from one another.
-        type StreamingParameters = 
+        type HistogramParameters = 
             internal { Resolution        : float<ns>
                        TotalLength       : float<ns>
-                       NumberOfBins      : int }
+                       NumberOfBins      : int 
+                       MarkerChannel     : MarkerChannel }
 
         /// Buffer to hold the results of each streaming event
         type StreamingBuffer = 

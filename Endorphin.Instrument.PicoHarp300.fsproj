@@ -60,12 +60,6 @@
     <Compile Include="PicoHarp300.fs" />
     <Compile Include="Histogram.fs" />
     <Compile Include="Streaming.fs" />
-    <None Include="HistogramMeasurement.fsx" />
-    <None Include="LiveCounts.fsx" />
-    <None Include="LiveHistogram.fsx" />
-    <None Include="Test.fsx" />
-    <None Include="Script1.fsx" />
-    <None Include="LiveCountsBothChannels.fsx" />
     <None Include="packages.config" />
     <Content Include="app.config" />
     <None Include="StreamingDemo.fsx" />

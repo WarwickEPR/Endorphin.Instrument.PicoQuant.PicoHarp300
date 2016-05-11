@@ -8,7 +8,7 @@ open Endorphin.Core
 
 module Histogram = 
     /// Sets the overflow limit on or off for the histogram bins.
-    let stopOverflow picoHarp300 (histogram : HistogramParameters) = 
+    let stopOverflow picoHarp300 (histogram : T1HistogramParameters) = 
         /// Sets cap on number of counts per bin, minimum cap is 1 and maximum is 65535.      
         match histogram.Overflow with
         /// If overflow is turned on then check if limit is inside allowed range and then write to PicoHarp.
@@ -33,7 +33,7 @@ module Histogram =
                             |> Async.ReturnFromThreadPool    
 
     /// Sets the bin resolution for the histogram.
-    let setBinning picoHarp300 (histogram : HistogramParameters) = 
+    let setBinning picoHarp300 (histogram : T1HistogramParameters) = 
         let binning = resolutionEnum (histogram.Resolution)
         PicoHarp.logDevice picoHarp300 "Setting histogram bin resolution."
         NativeApi.SetBinning (PicoHarp.index picoHarp300, binning)
@@ -62,7 +62,7 @@ module Histogram =
             do! waitToFinishMeasurement picoHarp300 pollDelay }
         
     /// Starts histogram mode Measurements, requires an acquisition time aka the period of time to take Measurements over.
-    let startMeasurement picoHarp300 (histogram : HistogramParameters) = 
+    let startMeasurement picoHarp300 (histogram : T1HistogramParameters) = 
         let acquisitionTime = Quantities.durationMilliSeconds (histogram.AcquisitionTime)
         PicoHarp.logDevice picoHarp300 "Setting acquisition time and starting Measurements."
         NativeApi.StartMeasurement (PicoHarp.index picoHarp300 , int (acquisitionTime)) 
@@ -109,7 +109,7 @@ module Histogram =
         |> Async.ReturnFromThreadPool
     
     /// Ties together functions needed to take a single measurement 
-    let private measurement picoHarp300 (histogram : HistogramParameters) (array : int[]) = async { 
+    let private measurement picoHarp300 (histogram : T1HistogramParameters) (array : int[]) = async { 
         let! clear     = clearmemory picoHarp300
         let! bin       = setBinning picoHarp300 histogram
         let! overflow  = stopOverflow picoHarp300 histogram

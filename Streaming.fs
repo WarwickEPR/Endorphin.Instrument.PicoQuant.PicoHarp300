@@ -22,8 +22,7 @@ module Streaming =
         | FailedStream of error : string
         | CancelledStream
 
-    type internal TagStream = { Tags                 : seq<Tag>
-                                HistogramParameters  : StreamingParameters }
+    type internal TagStream = { Tags                 : seq<Tag> }
 
     /// List of bin number and number of counts in bin
     type Histogram = { Histogram : (int * int) list }
@@ -34,15 +33,13 @@ module Streaming =
         | StreamCancelled
 
     type StreamingAcquisition = 
-        private { Parameters          : StreamingParameters
-                  StreamingBuffer     : StreamingBuffer
+        private { StreamingBuffer     : StreamingBuffer
                   PicoHarp            : PicoHarp300
                   StopCapability      : CancellationCapability<StreamStopOptions>
                   StatusChanged       : NotificationEvent<StreamStatus>
-                  TagsAvailable       : Event<TagStream>
-                  HistogramAvailable  : IObservable<Histogram> }
+                  TagsAvailable       : Event<TagStream> }
 
-    type HistogramAcquisitionHandle = 
+    type StreamingAcquisitionHandle = 
         private { Acquisition   : StreamingAcquisition
                   WaitToFinish  : Async<StreamResult> }
 
@@ -50,18 +47,6 @@ module Streaming =
                  {  WorkingHistogram    : int list
                     OverflowMarkers     : int
                     MarkerTimestamp     : uint32 }
-
-    module Parameters =
-        let internal computeNumberOfBins resolution length = 
-            int <| ((Quantities.durationNanoSeconds length) / (Quantities.durationNanoSeconds resolution))
-
-        let create resolution totalLength : StreamingParameters = 
-            { Resolution        = Quantities.durationNanoSeconds resolution
-              TotalLength       = Quantities.durationNanoSeconds totalLength
-              NumberOfBins      = computeNumberOfBins resolution totalLength }
-
-        let withResolution resolution         (parameters: StreamingParameters) = { parameters with Resolution = Quantities.durationNanoSeconds resolution; NumberOfBins = int <| ((parameters.TotalLength) / (Quantities.durationNanoSeconds resolution)) }
-        let withTotalLength totalLength       (parameters: StreamingParameters) = { parameters with TotalLength = Quantities.durationNanoSeconds totalLength;  NumberOfBins = int <| ((Quantities.durationNanoSeconds totalLength) / (parameters.Resolution)) }
 
     /// module for manipulating the tags from the PicoHarp
     module internal TagHelper =
@@ -77,6 +62,9 @@ module Streaming =
         let inline isMarker (tag : Tag) = 
             ((tag >>> 28) &&& 0xFu) = 15u && (tag &&& 0xFu) <> 0u
 
+        let inline markerChannel (tag : Tag) : uint32 = 
+            (tag &&& 0xFu)
+
     module internal TagStreamReader =
         let incrementTimeOverflowMarkers histogramResidual =
             { histogramResidual with OverflowMarkers = histogramResidual.OverflowMarkers + 1 }
@@ -90,13 +78,13 @@ module Streaming =
         let inline timeSinceMarker histogramResidual tag = 
             4.0<ps> * nanosecondsPerPicosecond * float ((uint64 histogramResidual.OverflowMarkers) * TTTROverflowTime + (uint64 <| TagHelper.timestamp tag) - (uint64 histogramResidual.MarkerTimestamp))
 
-        let inline histogramBin (histogramResidual : HistogramResidual) (parameters : StreamingParameters) tag : int option = 
+        let inline histogramBin (histogramResidual : HistogramResidual) (parameters : HistogramParameters) tag : int option = 
             match (timeSinceMarker histogramResidual tag) with
                 | tagTime when tagTime < parameters.TotalLength   -> Some (tagTime / parameters.Resolution |> floor |> int)
                 | _                                               -> None
                  
         /// Extract all histograms from the incoming tag stream, and build them into a sequence of histograms           
-        let extractAllHistograms (parameters : StreamingParameters) (histogramResidual : HistogramResidual option) (tagStream : TagStream) =
+        let extractAllHistograms (parameters : HistogramParameters) (histogramResidual : HistogramResidual option) (tagStream : TagStream) =
             let result = 
                 tagStream.Tags
                 |> Seq.fold (fun (histograms, residual) tag -> 
@@ -114,7 +102,7 @@ module Streaming =
                     ///             if the marker is the first record since the end of the previous histogram, start a new one
                     ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
                     match residual, tag with
-                        | None, tag when not <| TagHelper.isMarker tag   -> (histograms, residual)
+                        | None, tag when not <| TagHelper.isMarker tag && TagHelper.markerChannel tag <> (uint32 (parseMarkerChannel parameters.MarkerChannel)) -> (histograms, residual)
                         | None, tag                                      -> (histograms, Some (histogramResidualCreate <| TagHelper.timestamp tag))
                         | Some residual, tag when TagHelper.isPhoton tag -> 
                             match (histogramBin residual parameters tag) with
@@ -129,38 +117,24 @@ module Streaming =
                         /// should only get here if there is residual, and the tag is a marker - this should cause an error!
                         | _ ->  printfn "STREAMFAIL";failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (List.empty, histogramResidual)
             result
-
-     module internal HistogramEvent = 
-        type HistogramEvent = 
-            internal {  Output   : IObservable<Histogram> }
-
-        let create tagsAvailable parameters = 
-            let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()
-
-            let output = 
-                tagsAvailable
-                |> Observable.observeOn eventScheduler 
-                |> Observable.scanInit (List.empty, None) (fun (_,residual) tagStream ->
-                     TagStreamReader.extractAllHistograms parameters residual tagStream
-                    )  // pass each new tag stream and previous residual into the processing function
-                |> Observable.map (fst >> List.rev)
-                |> Observable.flatmapSeq Seq.ofList // fire event for each histogram
-              
-            { Output = output }
            
+        let countAllPhotons (tagStream : TagStream) =  
+            tagStream.Tags
+            |> Seq.filter TagHelper.isPhoton
+            |> Seq.toArray
+            |> Array.length
+
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
         
-        let create picoHarp histogramParameters = 
+        let create picoHarp = 
             let tagsAvailable = new Event<TagStream>()
 
-            { Parameters = histogramParameters
-              StreamingBuffer = { Buffer = buffer }
+            { StreamingBuffer = { Buffer = buffer }
               PicoHarp = picoHarp
               StopCapability = new CancellationCapability<StreamStopOptions>()
               StatusChanged = new NotificationEvent<StreamStatus>()
-              TagsAvailable = tagsAvailable
-              HistogramAvailable = (HistogramEvent.create tagsAvailable.Publish histogramParameters).Output }
+              TagsAvailable = tagsAvailable }
         
         let status acquisition =
             acquisition.StatusChanged.Publish
@@ -174,7 +148,7 @@ module Streaming =
             let buffer = Array.zeroCreate counts
             Array.blit acquisition.StreamingBuffer.Buffer 0 buffer 0 counts
             let tagSequence = Seq.ofArray buffer
-            acquisition.TagsAvailable.Trigger { Tags = tagSequence; HistogramParameters = acquisition.Parameters }
+            acquisition.TagsAvailable.Trigger { Tags = tagSequence }//; HistogramParameters = acquisition.Parameters }
 
         let rec private pollUntilFinished acquisition = async {
             if not acquisition.StopCapability.IsCancellationRequested then
@@ -266,5 +240,53 @@ module Streaming =
             stop acquisitionHandle
             waitToFinish acquisitionHandle
 
-        /// Alert when new histograms are available
-        let HistogramsAvailable acquisition = acquisition.HistogramAvailable
+        /// signal projections
+        module Histogram = 
+           module Parameters =
+               let internal computeNumberOfBins resolution length = 
+                   int <| ((Quantities.durationNanoSeconds length) / (Quantities.durationNanoSeconds resolution))
+
+               let create resolution totalLength markerChannel : HistogramParameters = 
+                   { Resolution        = Quantities.durationNanoSeconds resolution
+                     TotalLength       = Quantities.durationNanoSeconds totalLength
+                     NumberOfBins      = computeNumberOfBins resolution totalLength 
+                     MarkerChannel     = markerChannel }
+
+               let withResolution resolution         (parameters: HistogramParameters) = { parameters with Resolution = Quantities.durationNanoSeconds resolution; NumberOfBins = int <| ((parameters.TotalLength) / (Quantities.durationNanoSeconds resolution)) }
+               let withTotalLength totalLength       (parameters: HistogramParameters) = { parameters with TotalLength = Quantities.durationNanoSeconds totalLength;  NumberOfBins = int <| ((Quantities.durationNanoSeconds totalLength) / (parameters.Resolution)) }
+
+
+           type HistogramEvent = 
+               internal {  Output   : IObservable<Histogram> }
+   
+           let create streamingAcquisition parameters = 
+               let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()
+   
+               let output = 
+                   streamingAcquisition.TagsAvailable.Publish
+                   |> Observable.observeOn eventScheduler 
+                   |> Observable.scanInit (List.empty, None) (fun (_,residual) tagStream ->
+                        TagStreamReader.extractAllHistograms parameters residual tagStream
+                       )  // pass each new tag stream and previous residual into the processing function
+                   |> Observable.map (fst >> List.rev)
+                   |> Observable.flatmapSeq Seq.ofList // fire event for each histogram
+                 
+               { Output = output }
+
+           let HistogramsAvailable histogramAcquisition = histogramAcquisition.Output
+
+        module LiveCounts = 
+            type LiveCount = 
+                internal { Output : IObservable<int> }
+
+            let create streamingAcquisition  = 
+                let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()
+
+                let output = 
+                    streamingAcquisition.TagsAvailable.Publish
+                    |> Observable.observeOn eventScheduler
+                    |> Observable.map TagStreamReader.countAllPhotons
+
+                { Output = output }
+
+            let LiveCountAvailable liveCountAcquisition = liveCountAcquisition.Output
