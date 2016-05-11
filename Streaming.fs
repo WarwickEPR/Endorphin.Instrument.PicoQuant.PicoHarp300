@@ -69,7 +69,10 @@ module Streaming =
             ((tag >>> 28 ) &&& 0xFu)
 
         let inline isPhotonChannel0 (tag : Tag) : bool =
-            not <| (((tag >>> 28) &&& 0x1u) = 1u)
+            (((tag >>> 28) &&& 0x1u) <> 1u)
+
+        let inline timeBetweenTags (startTag : Tag) (stopTag : Tag) overflowMarkerCount = 
+            4.0<ps> * nanosecondsPerPicosecond * float ((uint64 overflowMarkerCount) * TTTROverflowTime + (uint64 <| timestamp stopTag) - (uint64 <| timestamp startTag))
 
     module internal TagStreamReader =
         let incrementTimeOverflowMarkers histogramResidual =
@@ -124,18 +127,27 @@ module Streaming =
                         | _ ->  printfn "STREAMFAIL";failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (List.empty, histogramResidual)
             result
            
-        let countAllPhotons (tagStream : TagStream) =  
+        let photonCountRate (tagStream : TagStream) =  
+            let tagArray = tagStream.Tags
+                           |> Seq.toArray
+            
             let photons = 
-                tagStream.Tags
-                |> Seq.filter TagHelper.isPhoton
-                |> Seq.toArray
+                tagArray
+                |> Array.filter TagHelper.isPhoton
+
+            let overflowCount = 
+                tagArray
+                |> Array.filter TagHelper.isTimeOverflow
+                |> Array.length
 
             let channel0photons = 
                 photons
                 |> Array.filter TagHelper.isPhotonChannel0
                 |> Array.length
 
-            (channel0photons, ((Array.length photons) - channel0photons))
+            let normalizationFactor = ((float <| TagHelper.timeBetweenTags (tagArray.[0]) (tagArray.[Array.length tagArray - 1]) overflowCount) / 1E9)
+
+            (int ((float channel0photons) / normalizationFactor), int ((float ((Array.length photons) - channel0photons) / normalizationFactor)))
 
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
@@ -298,7 +310,7 @@ module Streaming =
                 let output = 
                     streamingAcquisition.TagsAvailable.Publish
                     |> Observable.observeOn eventScheduler
-                    |> Observable.map TagStreamReader.countAllPhotons
+                    |> Observable.map TagStreamReader.photonCountRate
 
                 { Output = output }
 
