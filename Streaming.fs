@@ -65,6 +65,12 @@ module Streaming =
         let inline markerChannel (tag : Tag) : uint32 = 
             (tag &&& 0xFu)
 
+        let inline photonChannel (tag : Tag) : uint32 = 
+            ((tag >>> 28 ) &&& 0xFu)
+
+        let inline isPhotonChannel0 (tag : Tag) : bool =
+            not <| (((tag >>> 28) &&& 0x1u) = 1u)
+
     module internal TagStreamReader =
         let incrementTimeOverflowMarkers histogramResidual =
             { histogramResidual with OverflowMarkers = histogramResidual.OverflowMarkers + 1 }
@@ -119,10 +125,17 @@ module Streaming =
             result
            
         let countAllPhotons (tagStream : TagStream) =  
-            tagStream.Tags
-            |> Seq.filter TagHelper.isPhoton
-            |> Seq.toArray
-            |> Array.length
+            let photons = 
+                tagStream.Tags
+                |> Seq.filter TagHelper.isPhoton
+                |> Seq.toArray
+
+            let channel0photons = 
+                photons
+                |> Array.filter TagHelper.isPhotonChannel0
+                |> Array.length
+
+            (channel0photons, ((Array.length photons) - channel0photons))
 
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
@@ -277,7 +290,7 @@ module Streaming =
 
         module LiveCounts = 
             type LiveCount = 
-                internal { Output : IObservable<int> }
+                internal { Output : IObservable<int * int> }
 
             let create streamingAcquisition  = 
                 let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()

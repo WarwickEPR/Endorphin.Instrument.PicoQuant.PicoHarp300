@@ -75,7 +75,7 @@ module Model =
 
     /// Settings which apply only to free-running TTTR mode measurements
     [<AutoOpen>]
-    module SetupTTTRMeasurements = 
+    module TTTRConfiguration = 
             
         /// Maximum number of events that the PicoHarp can return during any one USB transfer
         [<Literal>]
