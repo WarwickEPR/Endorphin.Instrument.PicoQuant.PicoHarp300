@@ -52,11 +52,11 @@ let showHistogramChart acquisition = async {
     let chart = 
         Streaming.Acquisition.Histogram.HistogramsAvailable acquisition
         |> Observable.observeOnContext uiContext
-        |> Observable.map (fun (histogram) -> List.map (fun (bin, counts) -> (startFreq + (spanFreq / numPoints) * float (bin + 1), counts)) <| histogram.Histogram)
-        |> Observable.scan collateCounts
+        |> Observable.mapi (fun i histogram -> List.map (fun (bin, counts) -> (startFreq + (spanFreq / numPoints) * float (bin + 1), counts)) <| histogram.Histogram)
+        //|> Observable.scan collateCounts
         |> LiveChart.Line
-        |> Chart.WithXAxis(Title = "Frequency (GHz)")
-        |> Chart.WithYAxis(Title = "Counts")
+        |> Chart.WithXAxis(Title = "Time")
+        |> Chart.WithYAxis(Title = "Histocounts")
 
     new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
     |> form.Controls.Add
@@ -83,18 +83,19 @@ let printStatusUpdates acquisition =
     |> Observable.add (printfn "%A")
 
 let experiment = async {
-    //let picoHarp = PicoHarp.Initialise.picoHarp "1020854"
-    // do! Histogram.clearmemory picoHarp
-    //do! PicoHarp.Initialise.initialiseMode picoHarp T2
     let! picoHarp = PicoHarp.Initialise.initialise "1020854" Model.SetupInputChannel.T2
 
     let streamingAcquisition = Streaming.Acquisition.create picoHarp
     let streamingAcquisitionHandle = Streaming.Acquisition.startWithCancellationToken streamingAcquisition cts.Token
 
     try
-        let histogramParameters = Streaming.Acquisition.Histogram.Parameters.create (Duration_ms 100.<ms>) (Duration_ms 10000.<ms>) Model.SetupTTTRMeasurements.Marker1
-        let histogramAcquisition = Streaming.Acquisition.Histogram.create streamingAcquisition histogramParameters// Streaming.Acquisition.create picoHarp (Streaming.Parameters.create (Duration_ms binTime) (Duration_s expTime))
+        let histogramParameters = Streaming.Acquisition.Histogram.Parameters.create (Duration_ms 1.<ms>) (Duration_ms 80.<ms>) Model.SetupTTTRMeasurements.Marker2
+        let histogramAcquisition = Streaming.Acquisition.Histogram.create streamingAcquisition histogramParameters
         do! showHistogramChart histogramAcquisition
+
+        let liveCountAcquisition = Streaming.Acquisition.LiveCounts.create streamingAcquisition
+        do! showLiveChart liveCountAcquisition
+
         printStatusUpdates streamingAcquisition
 
         do! Async.Sleep 200000

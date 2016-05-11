@@ -102,8 +102,10 @@ module Streaming =
                     ///             if the marker is the first record since the end of the previous histogram, start a new one
                     ///             else, fail - the user has asked for histogram timings which do not fit within their acquisition triggers
                     match residual, tag with
-                        | None, tag when not <| TagHelper.isMarker tag && TagHelper.markerChannel tag <> (uint32 (parseMarkerChannel parameters.MarkerChannel)) -> (histograms, residual)
-                        | None, tag                                      -> (histograms, Some (histogramResidualCreate <| TagHelper.timestamp tag))
+                        | None, tag when not <| TagHelper.isMarker tag || (TagHelper.markerChannel tag <> (uint32 (parseMarkerChannel parameters.MarkerChannel))) -> (histograms, residual)
+                        | None, tag //when (TagHelper.markerChannel tag <> (uint32 (parseMarkerChannel parameters.MarkerChannel))) 
+                                                                         -> printfn "Marker channel: %A" (uint32 (parseMarkerChannel parameters.MarkerChannel));
+                                                                            (histograms, Some (histogramResidualCreate <| TagHelper.timestamp tag))
                         | Some residual, tag when TagHelper.isPhoton tag -> 
                             match (histogramBin residual parameters tag) with
                                 | Some bin                      -> (histograms, Some <| (addPhoton residual bin))
@@ -112,7 +114,7 @@ module Streaming =
                                     ({ Histogram = h } :: histograms, None)
                         | Some residual, tag when TagHelper.isTimeOverflow tag -> 
                             (histograms, Some <| incrementTimeOverflowMarkers residual)
-                        | Some residual, tag when TagHelper.isMarker tag && (histogramBin residual parameters tag) = None -> 
+                        | Some residual, tag when TagHelper.isMarker tag && (histogramBin residual parameters tag) = None && (TagHelper.markerChannel tag = (uint32 (parseMarkerChannel parameters.MarkerChannel))) -> 
                             ({ Histogram = ((Seq.countBy id residual.WorkingHistogram) |> Seq.toList) } :: histograms, Some <| (histogramResidualCreate <| TagHelper.timestamp tag))
                         /// should only get here if there is residual, and the tag is a marker - this should cause an error!
                         | _ ->  printfn "STREAMFAIL";failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (List.empty, histogramResidual)
