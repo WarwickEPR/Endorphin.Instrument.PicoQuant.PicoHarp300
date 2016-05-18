@@ -138,8 +138,8 @@ module Streaming =
                     match tag with
                         | tag when TagHelper.isTimeOverflow tag     -> (photons, numberOfOverflows + 1UL)
                         | tag when TagHelper.isPhoton tag && TagHelper.isPhotonChannel0 tag
-                                                                    -> (((TagHelper.totalTimeInPicoseconds tag numberOfOverflowMarkers)::(fst photons), snd photons), numberOfOverflows)
-                        | tag when TagHelper.isPhoton tag           -> ((fst photons, (TagHelper.totalTimeInPicoseconds tag numberOfOverflowMarkers)::(snd photons)), numberOfOverflows)
+                                                                    -> (((TagHelper.totalTimeInPicoseconds tag numberOfOverflows)::(fst photons), snd photons), numberOfOverflows)
+                        | tag when TagHelper.isPhoton tag           -> ((fst photons, (TagHelper.totalTimeInPicoseconds tag numberOfOverflows)::(snd photons)), numberOfOverflows)
                         // if not any of the above, must be a marker channel and can be ignored in correlation measurement
                         | _                                         -> (photons, numberOfOverflows)) ((List.empty, List.empty), numberOfOverflowMarkers)
             result
