@@ -74,6 +74,10 @@ module Streaming =
         let inline timeBetweenTags (startTag : Tag) (stopTag : Tag) overflowMarkerCount = 
             4.0<ps> * nanosecondsPerPicosecond * float ((uint64 overflowMarkerCount) * TTTROverflowTime + (uint64 <| timestamp stopTag) - (uint64 <| timestamp startTag))
 
+        // units of measure not supported on unsigned integer types
+        let inline totalTimeInPicoseconds (tag : Tag) (overflowMarkerCount : uint64) = 
+            4UL * (overflowMarkerCount * TTTROverflowTime + (uint64 <| timestamp tag))
+
     module internal TagStreamReader =
         let incrementTimeOverflowMarkers histogramResidual =
             { histogramResidual with OverflowMarkers = histogramResidual.OverflowMarkers + 1 }
@@ -126,7 +130,20 @@ module Streaming =
                         /// should only get here if there is residual, and the tag is a marker - this should cause an error!
                         | _ ->  printfn "STREAMFAIL";failwith "Encountered an unexpected marker tag. Do the histogram settings match the experimental settings?") (List.empty, histogramResidual)
             result
-           
+
+        let extractPhotonsByChannelAndTime (tagStream : TagStream) (numberOfOverflowMarkers : uint64) = 
+            let result = 
+                tagStream.Tags
+                |> Seq.fold (fun ((photons : uint64 list * uint64 list), numberOfOverflows) tag ->
+                    match tag with
+                        | tag when TagHelper.isTimeOverflow tag     -> (photons, numberOfOverflows + 1UL)
+                        | tag when TagHelper.isPhoton tag && TagHelper.isPhotonChannel0 tag
+                                                                    -> (((TagHelper.totalTimeInPicoseconds tag numberOfOverflowMarkers)::(fst photons), snd photons), numberOfOverflows)
+                        | tag when TagHelper.isPhoton tag           -> ((fst photons, (TagHelper.totalTimeInPicoseconds tag numberOfOverflowMarkers)::(snd photons)), numberOfOverflows)
+                        // if not any of the above, must be a marker channel and can be ignored in correlation measurement
+                        | _                                         -> (photons, numberOfOverflows)) ((List.empty, List.empty), numberOfOverflowMarkers)
+            result
+
         let photonCountRate (tagStream : TagStream) =  
             let tagArray = tagStream.Tags
                            |> Seq.toArray
@@ -147,7 +164,7 @@ module Streaming =
 
             let normalizationFactor = ((float <| TagHelper.timeBetweenTags (tagArray.[0]) (tagArray.[Array.length tagArray - 1]) overflowCount) / 1E8) * 1.3
 
-            (int ((float channel0photons) / normalizationFactor), int ((float ((Array.length photons) - channel0photons) / normalizationFactor)))
+            (int ((float channel0photons) / normalizationFactor), int ((float ((Array.length photons) - channel0photons) / normalizationFactor)))            
 
     module Acquisition = 
         let private buffer =  Array.zeroCreate TTTRMaxEvents
@@ -265,7 +282,9 @@ module Streaming =
             stop acquisitionHandle
             waitToFinish acquisitionHandle
 
-        /// signal projections
+        // signal projections
+
+        /// Bin incoming photons into a 2D histogram
         module Histogram = 
            module Parameters =
                let internal computeNumberOfBins resolution length = 
@@ -300,6 +319,7 @@ module Streaming =
 
            let HistogramsAvailable histogramAcquisition = histogramAcquisition.Output
 
+        /// Live counts per channel, normalised to counts per second
         module LiveCounts = 
             type LiveCount = 
                 internal { Output : IObservable<int * int> }
@@ -315,3 +335,22 @@ module Streaming =
                 { Output = output }
 
             let LiveCountAvailable liveCountAcquisition = liveCountAcquisition.Output
+
+        /// Separates incoming photons by channel and assigns them an absolute time since the start of the experiment
+        module PhotonTimeStream = 
+            type PhotonTimeStream = 
+                internal { Output: IObservable<uint64 list * uint64 list>}
+
+            let create (streamingAcquisition : StreamingAcquisition) = 
+                let eventScheduler = new System.Reactive.Concurrency.EventLoopScheduler()
+
+                let output = 
+                    streamingAcquisition.TagsAvailable.Publish
+                    |> Observable.observeOn eventScheduler
+                    |> Observable.scanInit ((List.empty, List.empty), 0UL) (fun (_, numberOfOverflowMarkers) tagStream ->
+                        TagStreamReader.extractPhotonsByChannelAndTime tagStream numberOfOverflowMarkers)
+                    |> Observable.map (fun (photonList, _) -> (List.rev (fst photonList), List.rev (snd photonList)))
+
+                { Output = output }
+
+            let PhotonTimesAvailable photonTimeAcquisition = photonTimeAcquisition.Output
