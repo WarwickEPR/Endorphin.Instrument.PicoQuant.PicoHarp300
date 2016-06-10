@@ -162,7 +162,11 @@ module Streaming =
                 |> Array.filter TagHelper.isPhotonChannel0
                 |> Array.length
 
-            let normalizationFactor = ((float <| TagHelper.timeBetweenTags (tagArray.[0]) (tagArray.[Array.length tagArray - 1]) overflowCount) / 1E8) * 1.3
+            let normalizationFactor = 
+                if (Array.length tagArray) <> 0 then
+                    ((float <| TagHelper.timeBetweenTags (tagArray.[0]) (tagArray.[Array.length tagArray - 1]) overflowCount) / 1E8) * 1.3
+                else
+                    1.
 
             (int ((float channel0photons) / normalizationFactor), int ((float ((Array.length photons) - channel0photons) / normalizationFactor)))            
 
