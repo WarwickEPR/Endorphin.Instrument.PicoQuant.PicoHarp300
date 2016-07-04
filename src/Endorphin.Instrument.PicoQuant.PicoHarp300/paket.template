@@ -1,0 +1,23 @@
+type project
+title
+    Endorphin.Instrument.PicoQuant.PicoHarp300
+owners
+    University of Warwick EPR and Diamond group
+authors 
+    University of Warwick EPR and Diamond group
+projectUrl
+    https://warwickepr.github.io/Endorphin.Instrument.PicoQuant.PicoHarp300
+iconUrl
+    https://raw.githubusercontent.com/WarwickEPR/Endorphin.Instrument.PicoQuant.PicoHarp300/master/docs/files/img/logo.png
+licenseUrl
+    http://github.com/WarwickEPR/Endorphin.Instrument.PicoQuant.PicoHarp300/blob/master/LICENSE.txt
+requireLicenseAcceptance
+    false
+copyright
+    Copyright 2015
+tags
+    fsharp science
+summary
+    F# wrapper for the PicoQuant PicoHarp300 time tagger.
+description
+    F# wrapper for the PicoQuant PicoHarp300 time tagger.
