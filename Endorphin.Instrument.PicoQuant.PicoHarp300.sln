@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{B8F11497-0E11-47D8-884A-65D39351F410}"
+	ProjectSection(SolutionItems) = preProject
+		build.fsx = build.fsx
+		LICENSE.txt = LICENSE.txt
+		paket.dependencies = paket.dependencies
+		README.md = README.md
+		RELEASE_NOTES.md = RELEASE_NOTES.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{DC63FD57-8C46-4D7A-B0F7-4F73801DA7FD}"
+	ProjectSection(SolutionItems) = preProject
+		docs\content\index.fsx = docs\content\index.fsx
+		docs\content\tutorial.fsx = docs\content\tutorial.fsx
+	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Endorphin.Instrument.PicoHarp300", "src\Endorphin.Instrument.PicoQuant.PicoHarp300\Endorphin.Instrument.PicoHarp300.fsproj", "{CAE4252B-663B-42A9-8353-FC4617827A3B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CAE4252B-663B-42A9-8353-FC4617827A3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CAE4252B-663B-42A9-8353-FC4617827A3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CAE4252B-663B-42A9-8353-FC4617827A3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CAE4252B-663B-42A9-8353-FC4617827A3B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

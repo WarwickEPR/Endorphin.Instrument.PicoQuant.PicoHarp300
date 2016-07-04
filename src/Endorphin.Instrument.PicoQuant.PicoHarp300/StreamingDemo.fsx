@@ -1,27 +1,28 @@
-﻿#r "../packages/ExtCore.0.8.45/lib/net45/ExtCore.dll"
-#r "../Endorphin.Core/bin/Debug/Endorphin.Core.dll"
-#r "../packages/FSharp.Charting.0.90.12/lib/net40/FSharp.Charting.dll"
-#r "bin/Debug/Endorphin.Instrument.PicoHarp300.dll"
+﻿// Copyright (c) University of Warwick. All Rights Reserved. Licensed under the Apache License, Version 2.0. See LICENSE.txt in the project root for license information.
+
+#I "../../packages/"
+
+#r "Endorphin.Core/lib/net452/Endorphin.Core.dll"
+#r "FSharp.Charting/lib/net40/FSharp.Charting.dll"
+#r "bin/Release/Endorphin.Instrument.PicoQuant.PicoHarp300.dll"
 #r "System.Windows.Forms.DataVisualization.dll"
-#r "../packages/Rx-Core.2.2.5/lib/net45/System.Reactive.Core.dll"
-#r "../packages/Rx-Interfaces.2.2.5/lib/net45/System.Reactive.Interfaces.dll"
-#r "../packages/Rx-Linq.2.2.5/lib/net45/System.Reactive.Linq.dll"
-#r "../packages/FSharp.Control.Reactive.3.2.0/lib/net40/FSharp.Control.Reactive.dll"
-#r "../packages/log4net.2.0.3/lib/net40-full/log4net.dll"
+#r "Rx-Core/lib/net45/System.Reactive.Core.dll"
+#r "Rx-Interfaces/lib/net45/System.Reactive.Interfaces.dll"
+#r "Rx-Linq/lib/net45/System.Reactive.Linq.dll"
+#r "FSharp.Control.Reactive/lib/net40/FSharp.Control.Reactive.dll"
+#r "log4net/lib/net40-full/log4net.dll"
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System
 open System.Threading
 open System.Windows.Forms
 
-open ExtCore.Control
 open FSharp.Charting
 open FSharp.Control.Reactive
 
 open Endorphin.Core
-open Endorphin.Instrument.PicoHarp300
+open Endorphin.Instrument.PicoQuant.PicoHarp300
 
-// log4net.Config.BasicConfigurator.Configure()
 
 let form = new Form(Visible = true, TopMost = true, Width = 800, Height = 600)
 let form2 = new Form (Visible=true, Width=600, Height=800)
@@ -38,7 +39,7 @@ let numPoints = (Seconds.toMilliseconds expTime) / binTime
 form.Closed |> Observable.add (fun _ -> cts.Cancel())
 
 let group_fold key value fold acc seq =
-    seq |> List.groupBy key 
+    seq |> List.groupBy key
         |> List.map (fun (key, seq) -> (key, seq |> List.map value |> List.fold fold acc))
 
 let collateCounts histogramList histogram =
@@ -49,7 +50,7 @@ let collateCounts histogramList histogram =
 let showHistogramChart acquisition = async {
     do! Async.SwitchToContext uiContext
 
-    let chart = 
+    let chart =
         Streaming.Acquisition.Histogram.HistogramsAvailable acquisition
         |> Observable.observeOnContext uiContext
         |> Observable.mapi (fun i histogram -> List.map (fun (bin, counts) -> (startFreq + (spanFreq / numPoints) * float (bin + 1), counts)) <| histogram.Histogram)
@@ -61,14 +62,13 @@ let showHistogramChart acquisition = async {
     new ChartTypes.ChartControl(chart, Dock = DockStyle.Fill)
     |> form.Controls.Add
 
-    do! Async.SwitchToThreadPool() }  
+    do! Async.SwitchToThreadPool() }
 
 let showLiveChart acquisition = async {
     do! Async.SwitchToContext uiContext
-    
+
     let chart = Streaming.Acquisition.LiveCounts.LiveCountAvailable acquisition
                 |> Observable.observeOnContext uiContext
-                |> Observable.mapi (fun i x -> (i, x))
                 |> LiveChart.FastLineIncremental
                 |> Chart.WithXAxis (Title = "Time")
                 |> Chart.WithYAxis (Title = "Counts")
@@ -89,7 +89,7 @@ let experiment = async {
     let streamingAcquisitionHandle = Streaming.Acquisition.startWithCancellationToken streamingAcquisition cts.Token
 
     try
-        let histogramParameters = Streaming.Acquisition.Histogram.Parameters.create (Duration_ms 1.<ms>) (Duration_ms 80.<ms>) Model.SetupTTTRMeasurements.Marker2
+        let histogramParameters = Streaming.Acquisition.Histogram.Parameters.create (Duration_ms 1.<ms>) (Duration_ms 80.<ms>) Marker2
         let histogramAcquisition = Streaming.Acquisition.Histogram.create streamingAcquisition histogramParameters
         do! showHistogramChart histogramAcquisition
 
@@ -101,7 +101,7 @@ let experiment = async {
         do! Async.Sleep 200000
         do Streaming.Acquisition.stop streamingAcquisitionHandle
 
-    finally 
+    finally
         async { do! PicoHarp.Initialise.closeDevice picoHarp } |> Async.RunSynchronously }
 
 Async.StartWithContinuations(experiment,

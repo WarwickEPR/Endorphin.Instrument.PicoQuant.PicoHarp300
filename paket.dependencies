@@ -1,0 +1,26 @@
+source https://nuget.org/api/v2
+
+nuget FSharp.Core redirects: force
+
+nuget Endorphin.Core
+nuget log4net
+
+nuget FSharp.Control.Reactive
+nuget Rx-Core
+nuget Rx-Interfaces
+nuget Rx-PlatformServices
+
+nuget FSharp.Charting
+
+github WarwickEPR/Endorphin.Core src/Endorphin.Core.Choice.fs
+github WarwickEPR/Endorphin.Core src/Endorphin.Core.Control.fs
+github WarwickEPR/Endorphin.Core src/Endorphin.Core.Reactive.fs
+
+group Build
+    source https://nuget.org/api/v2
+
+    nuget SourceLink.Fake
+    nuget FAKE
+    nuget FSharp.Formatting
+
+    github fsharp/FAKE modules/Octokit/Octokit.fsx

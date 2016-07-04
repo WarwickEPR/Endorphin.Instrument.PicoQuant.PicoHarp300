@@ -1,9 +1,11 @@
-﻿namespace Endorphin.Instrument.PicoHarp300
+// Copyright (c) University of Warwick. All Rights Reserved. Licensed under the Apache License, Version 2.0. See LICENSE.txt in the project root for license information.
+
+namespace Endorphin.Instrument.PicoQuant.PicoHarp300
 
 [<AutoOpen>]
-module internal Error = 
+module internal Error =
     /// Error code for the PicoHarp 300.
-    type ErrorCode = 
+    type ErrorCode =
         | NoError               =  0
         | DeviceOpenFail        = -1
         | DeviceBusy            = -2
@@ -82,7 +84,7 @@ module internal Error =
         | ErrorCode.UsbGetdriververFail   -> "Unable to retrieve the USB's driver version."
         | ErrorCode.UsbDriververMismatch  -> "Usb driver mismatch."
         | ErrorCode.UsbGetifinfoFail      -> "Unable to retrieve USB imformation."
-        | ErrorCode.UsbHispeedFail        -> "Usb Hispeed fail" 
+        | ErrorCode.UsbHispeedFail        -> "Usb Hispeed fail"
         | ErrorCode.UsbVcmdFail           -> "Usb Vcmd fail"
         | ErrorCode.UsbBulkrdFail         -> "Usb bulkrd fail."
         | ErrorCode.HardwareF01           -> "HardwareF01"
@@ -101,7 +103,7 @@ module internal Error =
         | ErrorCode.HardwareF14           -> "HardwareF14"
         | ErrorCode.HardwareF15           -> "HardwareF15"
         | errorCode                       -> failwithf "Unexpected error code enum value: %A." errorCode
-        
+
     let (|Ok|Error|) = function
-        | ErrorCode.NoError -> Ok  
+        | ErrorCode.NoError -> Ok
         | errorCode         -> Error (errorMessage errorCode)

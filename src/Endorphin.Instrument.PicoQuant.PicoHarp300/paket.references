@@ -1,0 +1,12 @@
+FSharp.Core
+Endorphin.Core
+log4net
+
+FSharp.Control.Reactive
+Rx-Core
+Rx-Interfaces
+Rx-PlatformServices
+
+File:Endorphin.Core.Choice.fs
+File:Endorphin.Core.Control.fs
+File:Endorphin.Core.Reactive.fs

@@ -1,9 +1,10 @@
-﻿namespace Endorphin.Instrument.PicoHarp300
+// Copyright (c) University of Warwick. All Rights Reserved. Licensed under the Apache License, Version 2.0. See LICENSE.txt in the project root for license information.
+
+namespace Endorphin.Instrument.PicoQuant.PicoHarp300
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
 open Endorphin.Core
-open Endorphin.Utilities
 
 [<AutoOpen>]
 module Model =

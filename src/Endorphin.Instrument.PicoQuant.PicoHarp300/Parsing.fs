@@ -1,4 +1,6 @@
-﻿namespace Endorphin.Instrument.PicoHarp300
+// Copyright (c) University of Warwick. All Rights Reserved. Licensed under the Apache License, Version 2.0. See LICENSE.txt in the project root for license information.
+
+namespace Endorphin.Instrument.PicoQuant.PicoHarp300
 
 open Microsoft.FSharp.Data.UnitSystems.SI.UnitSymbols
 open System.Text
@@ -6,8 +8,8 @@ open Endorphin.Core
 
 [<AutoOpen>]
 module internal Parsing =
- 
-    /// Converts type Mode into integers. 
+
+    /// Converts type Mode into integers.
     let modeEnum = function
         | Histogramming -> ModeEnum.Histogramming
         | T2 -> ModeEnum.T2
@@ -24,12 +26,12 @@ module internal Parsing =
         | Channel1 -> ChannelEnum.Channel1
         | channel  -> failwithf "Unexpected channel: %A." channel
 
-    /// Converts channel number back into type InputChannel. 
+    /// Converts channel number back into type InputChannel.
     let parseChannel = function
         | ChannelEnum.Channel0 -> Channel0
         | ChannelEnum.Channel1 -> Channel1
         | channel              -> failwithf "Unexpected channel enum value: %A." channel
-    
+
     let parseMarkerChannel = function
         | Marker0              -> MarkerChannelEnum.Marker0
         | Marker1              -> MarkerChannelEnum.Marker1
@@ -37,7 +39,7 @@ module internal Parsing =
         | Marker3              -> MarkerChannelEnum.Marker3
 
     /// Converts the bin width into corresponding power of 2, e.g 8 -> 3.
-    let resolutionEnum = function        
+    let resolutionEnum = function
         | Resolution_4ps   -> ResolutionEnum.Resolution_4ps
         | Resolution_8ps   -> ResolutionEnum.Resolution_8ps
         | Resolution_16ps  -> ResolutionEnum.Resolution_16ps
@@ -60,9 +62,9 @@ module internal Parsing =
         | resolution                      -> failwithf "Unexpected channel enum value: %A." resolution
 
     /// Converts type Rate into corresponding number.
-    let rateDividerEnum rate = 
+    let rateDividerEnum rate =
         match rate.RateDivider with
-        | RateDivider_1 -> RateDividerEnum.RateDividerEnum_1 
+        | RateDivider_1 -> RateDividerEnum.RateDividerEnum_1
         | RateDivider_2 -> RateDividerEnum.RateDividerEnum_2
         | RateDivider_4 -> RateDividerEnum.RateDividerEnum_4
         | RateDivider_8 -> RateDividerEnum.RateDividerEnum_8
@@ -74,6 +76,6 @@ module internal Parsing =
         | RateDividerEnum.RateDividerEnum_4 -> RateDivider_4
         | RateDividerEnum.RateDividerEnum_8 -> RateDivider_8
         | ratedivider                       -> failwithf "Unexpected rate division: %A." ratedivider
-        
+
 
 
