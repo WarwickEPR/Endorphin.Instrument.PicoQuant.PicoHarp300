@@ -14,4 +14,8 @@ documentation to follow...
 - Ben Green
 - Colin Stephen
 
+## Project Lead
+
+- [Dr. Gavin Morley](mailto:gavin.morley@warwick.ac.uk)
+
 [1]: https://warwickepr.github.io/Endorphin.Core
