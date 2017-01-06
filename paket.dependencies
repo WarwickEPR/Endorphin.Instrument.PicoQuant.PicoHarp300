@@ -6,9 +6,6 @@ nuget Endorphin.Core
 nuget log4net
 
 nuget FSharp.Control.Reactive
-nuget Rx-Core
-nuget Rx-Interfaces
-nuget Rx-PlatformServices
 
 nuget FSharp.Charting
 
