@@ -4,8 +4,7 @@ F# wrapper built on [Endorphin.Core][1] for controlling the PicoQuant
 PicoHarp300 time tagger.
 
 Documentation:
-http://WarwickEPR.github.io/Endorphin.Instrument.PicoQuant.PicoHarp300  More
-documentation to follow...
+http://WarwickEPR.github.io/Endorphin.Instrument.PicoQuant.PicoHarp300  
 
 ## Maintainers
 
